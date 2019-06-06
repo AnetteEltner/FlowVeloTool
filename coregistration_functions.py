@@ -45,8 +45,7 @@ def coregistration(image_list, directory_out, kp_nbr=None, sift_vers=False,
     master_img_name = image_list[1]
     master_img_dirs = master_img_name.split("/")    
     img_master = cv2.imread(master_img_name)
-    #cv2.imwrite(os.path.join(directory_out, master_img_dirs[-1])[:-4] + '_coreg.jpg', img_master)
-          
+    #cv2.imwrite(os.path.join(directory_out, master_img_dirs[-1])[:-4] + '_coreg.jpg', img_master)         
     
     if master_0 == True:    #matchin to master
         '''detect Harris keypoints in master image'''
@@ -186,8 +185,6 @@ def HarrisCorners(image_file, kp_nbr=None, visualize=False, img_import=False):
         
     keypoints = [cv2.KeyPoint(x[1], x[0], 1) for x in keypoints_reduced]
     
-    #print('number of Harris corners:' + str(len(keypoints)))
-    
     return keypoints, keypoints_reduced #keypoints_reduced for drawing
 
 
@@ -226,6 +223,7 @@ def SiftDescriptors(image_file, keypoints):
 
 
 #match SIFT features using SIFT matching
+#source code from Jan Erik Solem
 def match_SIFT(desc1, desc2):
     '''For each descriptor in the first image, select its match in the second image.
     input: desc1 (descriptors for the first image),
@@ -253,6 +251,7 @@ def match_SIFT(desc1, desc2):
 
 
 #match SIFT features using SIFT matching and perform two-sided
+#source code from Jan Erik Solem
 def match_twosided_SIFT(desc1, desc2):
     '''Two-sided symmetric version of match().'''
     
@@ -270,6 +269,7 @@ def match_twosided_SIFT(desc1, desc2):
 
 
 #match SIFT image features using FLANN matching
+#source code from Jan Erik Solem    
 def SiftMatchFLANN(des1,des2):
     max_dist = 0
     min_dist = 100
@@ -305,9 +305,9 @@ def SiftMatchFLANN(des1,des2):
 
 
 #match SIFT image features using FLANN matching and perform two-sided matching
+#source code from Jan Erik Solem
 def match_twosidedSift(desc1, desc2, kp1, kp2, match_Variant="FLANN"):
-    '''Two-sided symmetric version of match().'''
-    
+    '''Two-sided symmetric version of match().'''    
     if match_Variant == "FLANN":
         matches_12 = SiftMatchFLANN(desc1,desc2)
         matches_21 = SiftMatchFLANN(desc2,desc1)
@@ -355,6 +355,7 @@ def match_twosidedSift(desc1, desc2, kp1, kp2, match_Variant="FLANN"):
 
 
 #match STAR image features using bruce force matching
+#source code from Jan Erik Solem
 def match_DescriptorsBF(des1,des2,kp1,kp2,ratio_test=True,twosided=True):
     '''Match STAR descriptors between two images'''
     # create BFMatcher object
@@ -421,6 +422,7 @@ def match_DescriptorsBF(des1,des2,kp1,kp2,ratio_test=True,twosided=True):
 
 
 #match SIFT image features using bruce force matching    
+#source code from Jan Erik Solem
 def SiftMatchBF(des1, des2):
     # BFMatcher with default params
     bf = cv2.BFMatcher()

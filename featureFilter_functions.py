@@ -24,7 +24,7 @@
 
 '''filter feature tracks'''
 
-import sys, math
+import sys
 import numpy as np
 import pandas as pd
 
@@ -39,7 +39,8 @@ def TrackFilterMinCount(image_points, minCount):
                 count_id = count_id + 1
         pts_count.append([ids, count_id])
     pts_count = np.asarray(pts_count)
-            
+    
+    #keep only tracks, where feature is tracked across minimum number of frames
     PtsToKeep_TrackLongEnough = pts_count[pts_count[:,1] > minCount]
     image_points = image_points[image_points.id.isin(PtsToKeep_TrackLongEnough[:,0])]
     image_points = image_points.reset_index(drop=True)
@@ -48,13 +49,15 @@ def TrackFilterMinCount(image_points, minCount):
 
 
 def angleBetweenVecAndXaxis(track):
-    #calculate angel between track and x-axis
+    #prepare for calculation
     ones = np.ones((track.shape[0],1))
     zeros = np.zeros((track.shape[0],1))
     image_points_xy = pd.DataFrame(np.hstack((ones, zeros)))
     image_points_xy.columns = ['x','y']
     image_points_xy_tr = pd.DataFrame(track.reshape(track.shape[0],2))
     image_points_xy_tr.columns = ['x_tr','y_tr']
+    
+    #calculate angel between track and x-axis
     dotProd_vect = image_points_xy.x*image_points_xy_tr.x_tr + image_points_xy.y*image_points_xy_tr.y_tr
     len_vec_xy_tr = np.sqrt(np.square(image_points_xy_tr.y_tr)+np.square(image_points_xy_tr.x_tr))
     len_vec_xy = np.sqrt(np.square(image_points_xy.y)+np.square(image_points_xy.x))
@@ -64,29 +67,11 @@ def angleBetweenVecAndXaxis(track):
 
 
 def TrackFilterSteadiness(image_points, threshAngle):
-#     #angle between two points using atan2
-#     angle = np.abs(np.arctan2((image_points.y_tr - image_points.y), (image_points.x_tr - image_points.x)))
-#     i = 0
-#     while i < angle.shape[0]:
-#         angle_grad = math.degrees(angle[i])
-# #         if angle_grad < 0:
-# #             angle_grad = 360 + angle_grad           
-#         angle[i] = angle_grad
-#         i = i + 1
-# #     angle = np.arctan2((image_points.y_tr - 0), (image_points.x_tr - 0))
-# #     i = 0
-# #     while i < angle.shape[0]:
-# #         angle_grad = math.degrees(angle[i])
-# #         if angle_grad < 0:
-# #             angle_grad = 360 + angle_grad
-# #         angle[i] = angle_grad
-# #         i = i + 1
-
     threshAngle_rad = np.radians(threshAngle)
-
     StdAnglePerTrack = image_points.groupby('id', as_index=True).angle.std()
     print("Average std dev flow direction: " + str(np.degrees(np.average(StdAnglePerTrack))))
 
+    #keep only tracks, where tracked feature across frames are steady enough
     id_steady = StdAnglePerTrack[StdAnglePerTrack < threshAngle_rad]
     image_points = image_points[image_points.id.isin(id_steady.index.values)]
         
@@ -96,14 +81,13 @@ def TrackFilterSteadiness(image_points, threshAngle):
     
 
 def TrackFilterAngleRange(image_points, threshAngleRange):
-
     threshAngleRange_rad = np.radians(threshAngleRange)
-
     MaxAnglePerTrack = image_points.groupby('id', as_index=True).angle.max()
     MinAnglePerTrack = image_points.groupby('id', as_index=True).angle.min()
     RangeAnglePerTrack = MaxAnglePerTrack - MinAnglePerTrack
     print("Average range flow direction: " + str(np.degrees(np.average(RangeAnglePerTrack))))
 
+    #keep only tracks, where range of directions of tracked feature across frames are below threshold
     id_range = RangeAnglePerTrack[RangeAnglePerTrack < threshAngleRange_rad]
     image_points = image_points[image_points.id.isin(id_range.index.values)]
         
@@ -112,49 +96,30 @@ def TrackFilterAngleRange(image_points, threshAngleRange):
     return image_points, np.degrees(np.average(RangeAnglePerTrack)) #export tracks including newly calculated angle
 
 
-def TrackFilterMainflowdirection(image_points, binNbr, angle_buffer=10):
-    
+def TrackFilterMainflowdirection(image_points, binNbr, angle_buffer=10):    
     image_points = image_points.drop(columns='angle')
     
+    #get first and last position vector (track) of tracked feature across frames
     LastTrackPerTrack_x = image_points.groupby('id', as_index=True).x_tr.last()
     FirstTrackPerTrack_x = image_points.groupby('id', as_index=True).x.first()
     LastTrackPerTrack_y = image_points.groupby('id', as_index=True).y_tr.last()
     FirstTrackPerTrack_y = image_points.groupby('id', as_index=True).y.first()
     x_track = LastTrackPerTrack_x.values - FirstTrackPerTrack_x.values
     y_track = LastTrackPerTrack_y.values - FirstTrackPerTrack_y.values
-    track = np.hstack((x_track.reshape(x_track.shape[0],1), y_track.reshape(y_track.shape[0],1)))
+    track = np.hstack((x_track.reshape(x_track.shape[0],1), y_track.reshape(y_track.shape[0],1)))    
     
+    #preparation filter first-last vectors (tracks)
     angle = angleBetweenVecAndXaxis(track).values
     index_angle = np.asarray(LastTrackPerTrack_x.index)
     angle = np.hstack((index_angle.reshape(angle.shape[0],1), angle.reshape(angle.shape[0],1)))
     angle_df = pd.DataFrame(angle)
     angle_df.columns = ['index', 'angle']
-    MedianAnglePerTrack = angle_df.set_index('index')
-    
-#     #angle between two points using atan2
-#     angle = np.arctan2((LastTrackPerTrack_y - FirstTrackPerTrack_y), (LastTrackPerTrack_x - FirstTrackPerTrack_x))    
-#     i = 0
-#     while i < angle.shape[0]:
-#         angle_grad = math.degrees(angle[i])
-#         if angle_grad < 0:
-#             angle_grad = 360 + angle_grad
-#         angle[i] = angle_grad
-#         i = i + 1
-#     image_points['angle'] = pd.Series(angle, index=image_points.index)
-#     MedianAnglePerTrack = image_points.groupby('id', as_index=True).angle.median()
-#     print("Median angle flow direction: " + str(np.median(MedianAnglePerTrack)))
-#     angle_grad = np.degrees(angle.values)
-#
-#     MedianAnglePerTrack = pd.Series(angle, index=LastTrackPerTrack_x.index)
-    
+    MedianAnglePerTrack = angle_df.set_index('index')        
     print("Median angle flow direction: " + str(np.degrees(np.median(MedianAnglePerTrack.values))))
     
-    angle_buffer_rad = np.radians(angle_buffer) 
-    threshAngle = [np.median(MedianAnglePerTrack) - angle_buffer_rad, np.median(MedianAnglePerTrack) + angle_buffer_rad]
-         
-    #filter tracks outside main flow direction
-    if binNbr != 0:
-        #histogram analysis to find main direction of flow
+    #filter tracks outside main flow direction             
+    if binNbr != 0:        
+        #use histogram analysis to find main direction of flow
         flow_dirs_hist, bin_edges = np.histogram(MedianAnglePerTrack, bins=binNbr)
         bin_edges_RollMean = np.convolve(bin_edges, np.ones((2,))/2, mode='valid')
         flow_dirs_hist = np.hstack((flow_dirs_hist.reshape(flow_dirs_hist.shape[0],1), bin_edges_RollMean.reshape(bin_edges_RollMean.shape[0],1)))
@@ -195,6 +160,10 @@ def TrackFilterMainflowdirection(image_points, binNbr, angle_buffer=10):
         image_points = image_points[~image_points.id.isin(grouped_img_pts.index.values)]
         
     else:
+        #...or use median angle for all first-last vectors
+        angle_buffer_rad = np.radians(angle_buffer) 
+        threshAngle = [np.median(MedianAnglePerTrack) - angle_buffer_rad, np.median(MedianAnglePerTrack) + angle_buffer_rad]
+        
         MedianAnglePerTrack_filt = MedianAnglePerTrack[MedianAnglePerTrack > threshAngle[0]]
         MedianAnglePerTrack_filt = MedianAnglePerTrack_filt[MedianAnglePerTrack_filt < threshAngle[1]]
         image_points = image_points[image_points.id.isin(MedianAnglePerTrack_filt.index.values)]
@@ -205,7 +174,7 @@ def TrackFilterMainflowdirection(image_points, binNbr, angle_buffer=10):
    
 
 def FilteredTracksGroupPerID(image_points):  
-    
+    #get stastics for each filtered track
     MeanVeloPerTrack = image_points.groupby('id', as_index=True).velo.mean()
     MeanVeloPerTrack.name = 'velo_mean'
     StdVeloPerTrack = image_points.groupby('id', as_index=True).velo.std()

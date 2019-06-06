@@ -587,6 +587,8 @@ class FlowVeloTool:
             self.neighborSearchRadius_FD_Param.config(stat = 'disabled')        
             self.maximumNeighbors_FD_Param.config(state = 'disabled')
             self.sensitiveFD_Param.config(stat = 'disabled')
+            self.FT_forNthNberFrames_Param.config(stat = 'disabled')
+            self.FT_forNthNberFrames.set(1)
             self.ptv.set(False)            
         else:
             self.maxFtNbr_FD_Param.config(state = 'normal')
@@ -594,6 +596,7 @@ class FlowVeloTool:
             self.neighborSearchRadius_FD_Param.config(stat = 'normal')
             self.maximumNeighbors_FD_Param.config(state = 'normal')
             self.sensitiveFD_Param.config(stat = 'normal')
+            self.FT_forNthNberFrames_Param.config(stat = 'normal')
             self.ptv.set(True)
 
     def checkPTV(self):
@@ -603,6 +606,8 @@ class FlowVeloTool:
             self.neighborSearchRadius_FD_Param.config(stat = 'disabled')        
             self.maximumNeighbors_FD_Param.config(state = 'disabled')
             self.sensitiveFD_Param.config(stat = 'disabled')
+            self.FT_forNthNberFrames_Param.config(stat = 'disabled')
+            self.FT_forNthNberFrames.set(1)            
             self.lspiv.set(True)        
         else:
             self.maxFtNbr_FD_Param.config(state = 'normal')
@@ -610,6 +615,8 @@ class FlowVeloTool:
             self.neighborSearchRadius_FD_Param.config(stat = 'normal')
             self.maximumNeighbors_FD_Param.config(state = 'normal')
             self.sensitiveFD_Param.config(stat = 'normal')
+            self.FT_forNthNberFrames_Param.config(stat = 'normal') 
+            self.FT_forNthNberFrames.set(20)              
             self.lspiv.set(False)                     
 
     def checkLK(self):
@@ -897,13 +904,12 @@ class FlowVeloTool:
 
 
     def printTxt(self, txt):
-        self.textbox.insert(END, txt)
+        self.textbox.insert(tk.END, txt)
         return
     
 
     '''functions for data processing'''
     def accuracy_coregistration(self):
-
         #read parameters from directories
         failing = True
         while failing:
@@ -925,8 +931,10 @@ class FlowVeloTool:
                 print('failed reading data, please try again\n')
             
         image_list_coreg = sorted(image_list_coreg, key=lambda image: (image[0], image[1]))
-
-        img_check_pts = np.asarray(pd.read_table(check_points_forAccCoreg), dtype=np.float32)        
+        try:
+            img_check_pts = np.asarray(pd.read_table(check_points_forAccCoreg), dtype=np.float32)
+        except:
+            print('failed reading file with check points in image space')
         
         coregF.accuracy_coregistration(image_list_coreg, img_check_pts, self.template_size_coregAcc.get(), directoryOutput_coreg_acc)        
         
@@ -959,14 +967,15 @@ class FlowVeloTool:
                               self.feature_match_twosided.get(), self.nbr_good_matches.get())      
                 
         print('Co-registration finished.')
-        self.printTxt('finished co-registration')
+        self.printTxt('------------------------------------------\n'
+                      'finished co-registration\n')
         
 
     def EstimateVelocity(self):
         '''-------set parameters-------'''
         test_run = self.test_run.get()
         
-        #params exterior orientation estimation
+        #parameters exterior orientation estimation
         estimate_exterior = self.estimate_exterior.get()
         if (estimate_exterior == False) or (estimate_exterior == True and self.ransacApprox.get() == False):
             angles_eor_Str = self.angles_eor_Str.get()
@@ -987,22 +996,22 @@ class FlowVeloTool:
         max_orientation_deviation = 1
         ransacApprox = self.ransacApprox.get()
 
-        #params search area definition
+        #parameters search area definition
         waterlevel_pt = self.waterlevel_pt.get()  #float
         waterlevel_buffer = self.waterlevel_buffer.get()
 
-        #params feature detection
+        #parameters feature detection
         minimumThreshBrightness = self.minimumThreshBrightness.get()
         neighborSearchRadius_FD = self.neighborSearchRadius_FD.get()
         maximumNeighbors_FD = self.maximumNeighbors_FD.get()
         maxFtNbr_FD = self.maxFtNbr_FD.get()
         sensitiveFD = self.sensitiveFD.get()
 
-        #params tracking
+        #parameters tracking
         threshLSM = 0.001  #for adjustment
-        lsmBuffer = 3 #increases lsm search compared to patch
-        template_width = self.template_width.get() #has to be even
-        template_height = self.template_height.get()
+        lsmBuffer = 3 #increases lsm search area compared to patch
+        template_width = self.template_width.get() #has to be odd
+        template_height = self.template_height.get() #has to be odd
         search_area_x_CC = self.search_area_x_CC.get()
         search_area_y_CC = self.search_area_y_CC.get()
         shiftSearchFromCenter_x = self.shiftSearchFromCenter_x.get()
@@ -1013,12 +1022,10 @@ class FlowVeloTool:
         savePlotData = self.savePlotData.get()
         save_gif = self.saveGif.get()
 
-        #params iterations
+        #parameters iterations
         FD_everyIthFrame = self.FD_everyIthFrame.get()
         FT_forNthNberFrames = self.FT_forNthNberFrames.get()
         TrackEveryNthFrame = self.TrackEveryNthFrame.get()
-        minimumTrackedFeatures = self.minimumTrackedFeatures.get()
-        minimumTrackedFeatures = np.int(FT_forNthNberFrames*(minimumTrackedFeatures/100)/TrackEveryNthFrame)
 
         #params referencing
         frame_rate_cam = self.frame_rate_cam.get()         
@@ -1031,6 +1038,8 @@ class FlowVeloTool:
         veloStdThresh = self.veloStdThresh.get()
         minDistance_px = self.minDistance_px.get()   #in pixel
         maxDistance_px = self.maxDistance_px.get()
+        minimumTrackedFeatures = self.minimumTrackedFeatures.get()
+        minimumTrackedFeatures = np.int(FT_forNthNberFrames*(minimumTrackedFeatures/100)/TrackEveryNthFrame)
 
         #read parameters from directories
         directoryOutput = self.directoryOutput.get()
@@ -1043,13 +1052,22 @@ class FlowVeloTool:
             ptCloud_file = self.ptCloud_file.get()
         AoI_file = self.AoI_file.get()
                 
-        '''-------read data and prepare some for following processing-------'''                    
-        interior_orient = photogrF.read_aicon_ior(ior_file) #read interior orientation from file (aicon)   
+        '''-------read data and prepare for following processing-------'''                    
+        try:
+            interior_orient = photogrF.read_aicon_ior(ior_file) #read interior orientation from file (aicon)   
+        except:
+            print('failed reading interior orientation file')
         if not self.importAoIextent.get():
-            ptCloud = np.asarray(pd.read_table(ptCloud_file, header=None, delimiter=',')) #read point cloud
+            try:
+                ptCloud = np.asarray(pd.read_table(ptCloud_file, header=None, delimiter=',')) #read point cloud
+            except:
+                print('failed reading point cloud file')
         else: 
-            ptCloud = []          
-        img_list = ioF.read_imgs_folder(dir_imgs) #read image names in folder
+            ptCloud = []
+        try:
+            img_list = ioF.read_imgs_folder(dir_imgs) #read image names in folder
+        except:
+            print('failed reading images from folder')
     
         #prepare output
         if not os.path.exists(directoryOutput):
@@ -1057,7 +1075,8 @@ class FlowVeloTool:
             
         print('all input data read\n')
         print('------------------------------------------')
-        self.printTxt('finished reading input data')
+        self.printTxt('------------------------------------------\n'
+                      'finished reading input data')
                 
                 
         '''-------get exterior camera geometry-------'''
@@ -1065,7 +1084,7 @@ class FlowVeloTool:
                                        unit_gcp, max_orientation_deviation, ransacApprox, angles_eor, pos_eor,
                                        directoryOutput)
 
-        #select points only below water level to extract river area to search for features...
+        '''define search area for features'''
         searchMask = ptv.searchMask(waterlevel_pt, waterlevel_buffer, AoI_file, ptCloud, unit_gcp, interior_orient,
                                     eor_mat, savePlotData, directoryOutput, img_list, self.importAoIextent.get())
         
@@ -1122,11 +1141,15 @@ class FlowVeloTool:
                 #del imageio
             print('feature tracking done\n')
             print('------------------------------------------')
-            self.printTxt('finished feature tracking')
+            self.printTxt('------------------------------------------\n'
+                          'finished feature tracking')
         
         else:
             trackFile = tkFileDialog.askopenfilename(title='File with tracks', filetypes=[('Text file (*.txt)', '*.txt')],initialdir=os.getcwd())
-            trackedFeaturesOutput_undist = pd.read_table(trackFile)
+            try:
+                trackedFeaturesOutput_undist = pd.read_table(trackFile)
+            except:
+                print('failed reading feature file')
 
 
         '''-------filter tracking results in image space-------'''
@@ -1140,13 +1163,15 @@ class FlowVeloTool:
 
         print('filtering tracks done\n')
         print('------------------------------------------')
-        self.printTxt('finished filtering tracks')
+        self.printTxt('------------------------------------------\n'
+                      'finished filtering tracks\n')
 
 
         '''-------transform img measurements into object space-------'''
         ptv.TracksPx_to_TracksMetric(filteredFeatures, minimumTrackedFeatures, interior_orient, eor_mat, unit_gcp,
                                      frame_rate_cam, TrackEveryNthFrame, waterlevel_pt, directoryOutput, dir_imgs, img_list)
-        self.printTxt('finished transforming pixel values to velocities')
+        self.printTxt('------------------------------------------\n'
+                      'finished transforming pixel values to velocities')
         
         
         '''-------logfile-------'''
@@ -1174,7 +1199,8 @@ class FlowVeloTool:
 
         print('finished\n')
         print('------------------------------------------')
-        self.printTxt('finished velocity estimations')
+        self.printTxt('------------------------------------------\n'
+                      'finished velocity estimations')
         
  
 def main():        
@@ -1187,7 +1213,7 @@ def main():
     
     root.mainloop()
     
-    root.destroy() # optional; see description below        
+    #root.destroy() # optional; see description below        
 
 
 if __name__ == "__main__":

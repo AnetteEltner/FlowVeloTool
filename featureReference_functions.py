@@ -30,9 +30,8 @@ import cv2
 import photogrammetry_functions as photo_tool
 
 
-def LineWaterSurfaceIntersect(imgPts, cameraGeometry_interior, cameraGeometry_exterior, pointCloud, epsilon=1e-6):
-    
-    #get water plane with plane fitting
+def LineWaterSurfaceIntersect(imgPts, cameraGeometry_interior, cameraGeometry_exterior, pointCloud, epsilon=1e-6):    
+    #get water plane with plane fitting (when water surface not horizontal)
     planeParam = ausgl_ebene(pointCloud)   #planeParam = [a,b,c,d]
     try:
         np.sum(np.asarray(planeParam))
@@ -43,6 +42,7 @@ def LineWaterSurfaceIntersect(imgPts, cameraGeometry_interior, cameraGeometry_ex
         print('plane fitting failed')
         return    
 
+    #calculate plane normal
     planeNormal = np.array([planeParam[0],planeParam[1],planeParam[2]]) #normal vector
     planePoint = np.array([0,0,-1*planeParam[3]/planeParam[2]]) #support vector (for plane in normal form)
     
@@ -52,26 +52,22 @@ def LineWaterSurfaceIntersect(imgPts, cameraGeometry_interior, cameraGeometry_ex
     len_planeNormal = np.sum(np.sqrt((planeNormal**2)))
     zaehler = planeNormal[0] * PlanarPlaneNorm[0] + planeNormal[1] * PlanarPlaneNorm[1] + planeNormal[2] * PlanarPlaneNorm[2]
     angleNormVec = np.arccos(zaehler / (len_NivelPlaneNorm * len_planeNormal)) * 180/np.pi
-    
     print('angle of plane: ' + str(angleNormVec))
-
     
-    imgPts_undist_mm = photo_tool.undistort_img_coos(imgPts, cameraGeometry_interior)
-
     #origin of ray is projection center
     rayPoint = np.asarray([cameraGeometry_exterior[0], cameraGeometry_exterior[1], cameraGeometry_exterior[2]])
     
     #transform image ray into object space
+    imgPts_undist_mm = photo_tool.undistort_img_coos(imgPts, cameraGeometry_interior)
     rayDirections = photo_tool.imgDepthPts_to_objSpace(imgPts_undist_mm, cameraGeometry_exterior, cameraGeometry_interior.resolution_x, cameraGeometry_interior.resolution_y, 
                                                      cameraGeometry_interior.sensor_size_x / cameraGeometry_interior.resolution_x, cameraGeometry_interior.ck)   
         
     PtsIntersectedWaterPlane = []
-    for ray in rayDirections:
-        
+    for ray in rayDirections:        
         #perform intersection 
         ndotu = planeNormal.dot(ray)
         if abs(ndotu) < epsilon:
-            raise RuntimeError("no intersection or line is within plane")
+            raise RuntimeError("no intersection with plane possible")
      
         w = rayPoint - planePoint
         si = -planeNormal.dot(w) / ndotu
@@ -85,34 +81,20 @@ def LineWaterSurfaceIntersect(imgPts, cameraGeometry_interior, cameraGeometry_ex
 
 
 def LinePlaneIntersect(imgPts, waterlevel, cameraGeometry_interior, cameraGeometry_exterior, unit_gcp=1, epsilon=1e-6):
-    
+    #assume water is horizontal plane
     planeNormal = np.array([0,0,1]) #normal vector
-    planePoint = np.array([0,0,waterlevel*unit_gcp]) #support vector (for plane in normal form)
-    
+    planePoint = np.array([0,0,waterlevel*unit_gcp]) #support vector (for plane in normal form)   
     planeNormal_norm = planeNormal * (1/np.linalg.norm(planeNormal))
     
-#     #calculate angle of plane
-#     PlanarPlaneNorm = np.asarray([0,0,1])
-#     len_NivelPlaneNorm = np.sum(np.sqrt((PlanarPlaneNorm**2)))
-#     len_planeNormal = np.sum(np.sqrt((planeNormal**2)))
-#     zaehler = planeNormal[0] * PlanarPlaneNorm[0] + planeNormal[1] * PlanarPlaneNorm[1] + planeNormal[2] * PlanarPlaneNorm[2]
-#     angleNormVec = np.arccos(zaehler / (len_NivelPlaneNorm * len_planeNormal)) * 180/np.pi    
-#     print('angle of plane: ' + str(angleNormVec))
-
-    imgPts_undist_mm = photo_tool.undistort_img_coos(imgPts, cameraGeometry_interior)
-#     imgPts_undist_mm = ref_tool.pixel_to_metric(imgPts, cameraGeometry_interior.resolution_x, cameraGeometry_interior.resolution_y, 
-#                                                 cameraGeometry_interior.sensor_size_x, cameraGeometry_interior.sensor_size_y)
-
     #origin of ray is projection center
     rayPoint = np.asarray([cameraGeometry_exterior[0,3], cameraGeometry_exterior[1,3], cameraGeometry_exterior[2,3]])
     
     #transform image ray into object space
+    imgPts_undist_mm = photo_tool.undistort_img_coos(imgPts, cameraGeometry_interior)
     imgPts_undist_forObj_x = imgPts_undist_mm[:,0] * -1
     imgPts_undist_forObj_y = imgPts_undist_mm[:,1]
     imgPts_undist_forObj = np.hstack((imgPts_undist_forObj_x.reshape(imgPts_undist_forObj_x.shape[0],1), imgPts_undist_forObj_y.reshape(imgPts_undist_forObj_y.shape[0],1)))
     imgPts_undist_forObj = np.hstack((imgPts_undist_forObj, np.ones((imgPts_undist_mm.shape[0],1)) * cameraGeometry_interior.ck))
-#     rayPts = ref_tool.imgDepthPts_to_objSpace(imgPts_undist_forObj, cameraGeometry_exterior, cameraGeometry_interior.resolution_x, cameraGeometry_interior.resolution_y, 
-#                                                      cameraGeometry_interior.sensor_size_x / cameraGeometry_interior.resolution_x, cameraGeometry_interior.ck)
     
     #transform into object space
     imgPts_XYZ = np.matrix(cameraGeometry_exterior) * np.matrix(np.vstack((imgPts_undist_forObj.T, np.ones(imgPts_undist_forObj.shape[0]))))
@@ -122,17 +104,15 @@ def LinePlaneIntersect(imgPts, waterlevel, cameraGeometry_interior, cameraGeomet
 #     z_range = np.asarray(range(500))
 #     Z_range = z_range.reshape(z_range.shape[0],1) * (np.ones((z_range.shape[0],3)) * cameraGeometry_exterior[0:3,2].T) + np.ones((z_range.shape[0],3)) * cameraGeometry_exterior[0:3,3].T
   
-    rayDirections = np.ones((rayPts.shape)) * rayPoint - rayPts
-    
+    rayDirections = np.ones((rayPts.shape)) * rayPoint - rayPts    
     rayDirections_norm = rayDirections * (1/np.linalg.norm(rayDirections))
 
     PtsIntersectedWaterPlane = []
-    for ray in rayDirections_norm:
-        
+    for ray in rayDirections_norm:        
         #perform intersection 
         ndotu = planeNormal_norm.dot(ray)
         if abs(ndotu) < epsilon:
-            raise RuntimeError("no intersection or line is within plane")
+            raise RuntimeError("no intersection with plane possible")
      
         w = rayPoint - planePoint
         si = -planeNormal_norm.dot(w) / ndotu
@@ -146,8 +126,8 @@ def LinePlaneIntersect(imgPts, waterlevel, cameraGeometry_interior, cameraGeomet
 
 
 def getTransformationMat(XY, xy):
-    #XYxy: np.array with assigned object and img space lateral coordinates
-    
+#XYxy: np.array with assigned object and img space lateral coordinates    
+    #get transformation matrix
     transform_mat, _ = cv2.findHomography(xy, XY, cv2.RANSAC)  
     transform_mat = np.asarray(transform_mat, dtype=np.float32) 
     print('Transformation matrix:')
@@ -169,7 +149,7 @@ def getTransformationMat(XY, xy):
 
 
 def TracksToVelocityWithTransformMat(start_point, end_point, transform_mat, frame_rate):
-        
+    #transform tracks to scale correctly (when rectification performed with GCPs in plane)
     xy_start_transformed = cv2.perspectiveTransform(start_point, transform_mat)
     x_start_t = xy_start_transformed.flatten()[0]
     y_start_t = xy_start_transformed.flatten()[1]   
@@ -184,8 +164,7 @@ def TracksToVelocityWithTransformMat(start_point, end_point, transform_mat, fram
             end_point[0], end_point[1], x_t, y_t, dist, velo])
 
 
-def TracksToVelocity_PerPoint(start_point, end_point, frame_rate):
-        
+def TracksToVelocity_PerPoint(start_point, end_point, frame_rate):        
     x_start_t = start_point[0]
     y_start_t = start_point[1]   
     x_t = end_point[0]
@@ -201,12 +180,12 @@ def TracksToVelocity_PerPoint(start_point, end_point, frame_rate):
 ''' plan adjustment '''
 from scipy import linalg, sparse
 def ausgl_ebene(Punkte, ausgabe='no'):    
-## Berechnung ausgleichender Ebenenparameter im Gaus-Helmert-Modell
+## Calculation adjusted plane parameters with Gaus-Helmert-Modell
 # v1.03
 #
 # Mordwinzew Waldemar (2011)
 # http://www.mordwinzew.de/ausgleichung/ghm/ebene
-# Umgeschrieben fuer Python (Anette)
+# Translated from Matlab to Python by Anette Eltner
 # 
 # Liest eine Koordinatendatei im folgenden Format ein
 # 0.0   0.0   0.0

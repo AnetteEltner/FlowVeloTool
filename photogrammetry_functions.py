@@ -40,13 +40,17 @@ def getExteriorCameraGeometry(gcpImgPts, gcpObjPts, interior_orient, unit_gcp=1,
     #gcpObjPts and gcpImgPts: arrays with coordinates AND point IDs
     
     if ransacApprox:
+        #use RANSAC to get initial values of exterior orientation parameters
         try:
             gcpImgPts_pix_id = gcpImgPts[:,0].reshape(gcpImgPts.shape[0],1)
             gcpImgPts_pix = metric_to_pixel(gcpImgPts[:,1:3], interior_orient.resolution_x, interior_orient.resolution_y, 
                                                      interior_orient.sensor_size_x, interior_orient.sensor_size_y)
             gcpImgPts_pix = np.hstack((gcpImgPts_pix_id, gcpImgPts_pix))
+            
+            #perform estimation with RANSAC
             exteriorApprox_rans, rot_mat_rans, position_rans, inlier_ids = getExteriorCameraGeometry_withRANSAC(gcpImgPts_pix, gcpObjPts, interior_orient, unit_gcp)
             
+            #keep only inlier GCPs for further improvement of initial RANSAC values with adjustment
             gcpImgPts_filtered = []
             for inlier in inlier_ids:
                 gcpImgPts_filtered.append(gcpImgPts[np.int(inlier),:])
@@ -58,15 +62,18 @@ def getExteriorCameraGeometry(gcpImgPts, gcpObjPts, interior_orient, unit_gcp=1,
             print('estimation exterior orientation with RANSAC failed')
             return 1/0
    
-    '''using resection with Danilo adjustment'''
+    '''using resection with adjustment'''
     try:
-        cam_file_forResection = [interior_orient.ck, 0, 0,    #note that ck is negative (used unchanged from aicon)    interior_orient.xh, interior_orient.yh
+        #refine RANSAC exterior orientation or calculate exterior orientation from provided initial values
+        cam_file_forResection = [interior_orient.ck, 0, 0,    #note that ck has to be negative
                                  0, 0, 0, 0, 0, 0, 0, 0]
         
+        #fit points in image space to GCP coordinates in object space
         img_pts, gcp_coos, _ = assign_ImgToObj_Measurement(gcpObjPts, gcpImgPts)
         ImgGCPCoo = np.hstack((img_pts, gcp_coos))
         ImgGCPCoo[:,2:5] = ImgGCPCoo[:,2:5] * unit_gcp
         
+        #perform adjustment
         if ransacApprox:
             calib_results, s0, nbrObserv = resection(cam_file_forResection, exteriorApprox_rans, ImgGCPCoo, 0.0001, False)
         else:
@@ -74,13 +81,10 @@ def getExteriorCameraGeometry(gcpImgPts, gcpObjPts, interior_orient, unit_gcp=1,
         
         print('camera position accuracy: ' + str(s0))
         print('exterior orientation with adjustment: ' + str(calib_results))
-        
-        #print np.isinf(s0)
 
-
+        #proceed with estimated values if they are valid
         if calib_results[0,0] != -9999 and np.isinf(s0) == False:        
             position = calib_results[0:3,0] / unit_gcp            
-            #rotation = calib_results[3:6,0]        
             
             #convert angles into rotation matrix
             rot_mat = rot_Matrix(calib_results[3,0], calib_results[4,0], calib_results[5,0], 'radians').T
@@ -96,14 +100,13 @@ def getExteriorCameraGeometry(gcpImgPts, gcpObjPts, interior_orient, unit_gcp=1,
                 calib_results_out.to_csv(dirOut + 'Accuracy_CameraOrient.txt', sep='\t', index=False)
                 
         elif ransacApprox:        
-            '''if resection fails use RANSAC'''
+            #if resection fails use RANSAC
             s0 = np.zeros((1,1))
             
             rot_mat = rot_Matrix(exteriorApprox_rans[3,0], exteriorApprox_rans[4,0], exteriorApprox_rans[5,0], 'radians').T
             multipl_array = np.array([[-1,-1,-1],[1,1,1],[-1,-1,-1]])
             rot_mat = rot_mat * multipl_array            
             
-#             rot_mat = rot_mat_rans[:]
             position = position_rans[:]
             print('resection adjustment failed and only exterior orientation from RANSAC used')
     
@@ -111,8 +114,7 @@ def getExteriorCameraGeometry(gcpImgPts, gcpObjPts, interior_orient, unit_gcp=1,
             print('referencing failed and thus skipped')
             return 1/0
     
-    
-        #return exterior orientation where referencing at least within 100%-min_accuracy of good registration
+        #return exterior orientation where referencing at least within "100% - min_accuracy" of good registration
         if not exteriorApprox.all() == 0:   #use only if exteriorApprox values are given
             position_ref_neg = exteriorApprox[:,0:3] - max_orient_diff * exteriorApprox[:,0:3]   
             position_ref_pos = exteriorApprox[:,0:3] + max_orient_diff * exteriorApprox[:,0:3]   
@@ -124,6 +126,7 @@ def getExteriorCameraGeometry(gcpImgPts, gcpObjPts, interior_orient, unit_gcp=1,
                 print('orientation too large deviations to approximation')
                 return
         
+        #shape rotation and position matrix into transformation matrix
         eor_mat = np.hstack((rot_mat.T, position.reshape(position.shape[0],1))) #if rotation matrix received from opencv transpose rot_mat
         eor_mat = np.vstack((eor_mat, [0,0,0,1]))
          
@@ -132,8 +135,6 @@ def getExteriorCameraGeometry(gcpImgPts, gcpObjPts, interior_orient, unit_gcp=1,
             return
          
         print('image taken from position ' + str(position))
-        
-#         print(eor_mat)
         
         return(eor_mat)
     
@@ -148,7 +149,6 @@ def getExteriorCameraGeometry_withRANSAC(gcpImgPts, gcpObjPts, interior_orient, 
     #assuming distortion free lens
     #interior_orient: imported with read_aicon function
     #gcpObjPts and gcpImgPts: arrays with coordinates AND point IDs
-
     
     #convert camera parameters of undistorted image to pixel value for opencv
     pixel_size = interior_orient.sensor_size_x / interior_orient.resolution_x
@@ -157,7 +157,7 @@ def getExteriorCameraGeometry_withRANSAC(gcpImgPts, gcpObjPts, interior_orient, 
     yh = interior_orient.resolution_y / 2
     cam_file_forOpenCV = [ck, xh, yh, 0, 0, 0, 0, 0]
     
-    #get camera position 
+    #get camera pose 
     rot_mat, position, inliers = register_frame(gcpImgPts, gcpObjPts, cam_file_forOpenCV, False, None, 20)   #True, img_to_read
     inliers = np.asarray(inliers).flatten()
 
@@ -174,7 +174,7 @@ def getExteriorCameraGeometry_withRANSAC(gcpImgPts, gcpObjPts, interior_orient, 
         print(error)
         print('could not calculate outlier number')
     
-    #convert rot_mat into angles
+    #convert rotation matrix into angles
     multipl_array = np.array([[1,0,0],[0,-1,0],[0,0,1]])  
     rot_matrix = -1 * (np.matrix(rot_mat) * np.matrix(multipl_array))
     rot_matrix = np.asarray(rot_matrix)
@@ -195,9 +195,8 @@ def project_pts_into_img(eor_mat, ior_mat, point_cloud, plot_results=False, neg_
     else:
         RGB_included = False
     
-    #exterior image parameters
-    img_transform = eor_mat 
-    
+    #exterior image orientation parameters
+    img_transform = eor_mat     
     
     '''transform point cloud into camera coordinate system'''
     point_cloudXYZ = point_cloud[:,0:3]
@@ -215,14 +214,12 @@ def project_pts_into_img(eor_mat, ior_mat, point_cloud, plot_results=False, neg_
     df_points = pd.DataFrame(point_cloud)  
     df_points = df_points.loc[df_points[2] > 0] 
     point_cloud = np.asarray(df_points)
-    del df_points
-    
+    del df_points    
     
     '''inbetween coordinate system'''
     x = point_cloud[:,0] / point_cloud[:,2]
     y = point_cloud[:,1] / point_cloud[:,2]
     d = point_cloud[:,2]
-    #del point_cloud
     
     if neg_x:
         ptCloud_img = np.hstack((x.reshape(x.shape[0],1)*-1, y.reshape(y.shape[0],1)))
@@ -247,12 +244,6 @@ def project_pts_into_img(eor_mat, ior_mat, point_cloud, plot_results=False, neg_
         plt.show()
         plt.close('all')
         del ax
-    
-#     #remove points outside field of view
-#     test1 = np.abs(point_cloud[:,0]) > np.abs((ior_mat.resolution_x - ior_mat.xh) / (-1*ior_mat.ck) * point_cloud[:,2])
-#     test2 = np.abs(point_cloud[:,1]) > np.abs((ior_mat.resolution_y - ior_mat.yh) / (ior_mat.ck) * point_cloud[:,2])
-#     test = np.where(np.logical_and(test1 == True, test2 == True))    
-#     ptCloud_img = ptCloud_img[test]   
   
     '''calculate depth map but no interpolation (solely for points from point cloud'''
     ptCloud_img_x = ptCloud_img[:,0] * -1 * ior_mat.ck
@@ -343,8 +334,7 @@ def read_aicon_ior(directory, ior_file=None):
 
 
 def pixel_to_metric(img_pts, x_resolution, y_resolution, x_size, y_size):
-    #convert pixel coordinates into metric camera coordinate system
-    
+    #convert pixel coordinates into metric camera coordinate system    
     center_x = x_resolution/2 + 0.5
     center_y = y_resolution/2 + 0.5
     pixel_size = x_size/x_resolution
@@ -364,7 +354,6 @@ def pixel_to_metric(img_pts, x_resolution, y_resolution, x_size, y_size):
 
 def metric_to_pixel(img_pts, x_resolution, y_resolution, x_size, y_size):
     #convert metric image measurements into pixel
-
     pixel_size = x_size/x_resolution
     
     pixel_size_control = y_size/y_resolution
@@ -395,10 +384,8 @@ def undistort_img_coos(img_pts, interior_orient, mm_val=False):
         
     x_img = img_pts[:,0]
     y_img = img_pts[:,1]
-
     x_img_1 = img_pts[:,0]
-    y_img_1 = img_pts[:,1]
-    
+    y_img_1 = img_pts[:,1]    
     
     #start iterative undistortion
     iteration = 0
@@ -406,8 +393,7 @@ def undistort_img_coos(img_pts, interior_orient, mm_val=False):
     test_result = [10, 10]
     
     try:
-        while np.max(test_result) > 1e-14:
-            
+        while np.max(test_result) > 1e-14:            
             if iteration > 1000:
                 #sys.exit('No solution for un-distortion')
                 print('Undistortion for this point-set failed. Using original points.')
@@ -441,13 +427,11 @@ def undistort_img_coos(img_pts, interior_orient, mm_val=False):
                       interior_orient.A3 * (r**6 - interior_orient.r0**6))
                 
             dx_rad = x_dash * p1
-            dy_rad = y_dash * p1
-            
+            dy_rad = y_dash * p1            
             
             #tangential distortion
             dx_tan = (interior_orient.B1 * (r2 + 2 * x_dash**2)) + 2 * interior_orient.B2 * x_dash * y_dash
-            dy_tan = (interior_orient.B2 * (r2 + 2 * y_dash**2)) + 2 * interior_orient.B1 * x_dash * y_dash
-            
+            dy_tan = (interior_orient.B2 * (r2 + 2 * y_dash**2)) + 2 * interior_orient.B1 * x_dash * y_dash           
             
             #combined distortion
             dx = dx_rad + dx_tan
@@ -455,8 +439,7 @@ def undistort_img_coos(img_pts, interior_orient, mm_val=False):
             
             x_roof = x_dash + dx
             y_roof = y_dash + dy
-            
-            
+                       
             #adding up distortion to recent distorted coordinate
             if interior_orient.r0 == 0:
                 x_img_undistort = np.ones(x_dash.shape[0]) * interior_orient.xh - ck * (np.ones(x_roof.shape[0]) + interior_orient.C1) * x_roof - ck * interior_orient.C2 * y_roof
@@ -464,8 +447,7 @@ def undistort_img_coos(img_pts, interior_orient, mm_val=False):
             else:
                 x_img_undistort = np.ones(x_dash.shape[0]) * interior_orient.xh + (np.ones(x_roof.shape[0]) + interior_orient.C1) * x_roof + interior_orient.C2 * y_roof
                 y_img_undistort = np.ones(y_roof.shape[0]) * interior_orient.yh + y_roof
-                
-            
+                            
             #subtracting distortion from original coordinate
             x_img = x_img_1 - (x_img_undistort - x_img)
             y_img = y_img_1 - (y_img_undistort - y_img)
@@ -480,8 +462,7 @@ def undistort_img_coos(img_pts, interior_orient, mm_val=False):
     
     x_undistort = x_img #in mm
     y_undistort = y_img #in mm
-    
-    
+        
     x_undistort = x_undistort.reshape(x_undistort.shape[0],1)
     y_undistort = y_undistort.reshape(y_undistort.shape[0],1)
     img_pts_undist = np.hstack((x_undistort, y_undistort))
@@ -492,7 +473,6 @@ def undistort_img_coos(img_pts, interior_orient, mm_val=False):
 def assign_ImgToObj_Measurement(obj_pts, img_pts):
 #obj_pts: object coordinate (ID, X, Y, Z)
 #img_pts: image coordinates (ID, x, y)
-
     img_coos = []
     gcp_coos = []
     pt_id = []
@@ -506,8 +486,7 @@ def assign_ImgToObj_Measurement(obj_pts, img_pts):
                 nbr_rows = nbr_rows + 1
                 break 
     img_coos = np.float32(img_coos).reshape(nbr_rows,2)
-    gcp_coos = np.float32(gcp_coos).reshape(nbr_rows,3)
-   
+    gcp_coos = np.float32(gcp_coos).reshape(nbr_rows,3)   
     
     return img_coos, gcp_coos, pt_id
 
@@ -633,14 +612,14 @@ def model_resection(camera_interior, GCP, camera_exterior, rot_mat_dir_v1=True):
     y = yh + y;
     y = y + y * (A1*(r**2-r0**2)+A2*(r**4-r0**4)+A3*(r**6-r0**6))
     y = y + B2*(r*r+2*y*y) + 2*B1*x*y
-    y = y + 0
-    
+    y = y + 0   
     
     return x, y
 
 
 ''' MAIN FUNCTION FOR SPATIAL RESECTION'''
 def resection(camera_interior, camera_exterior, ImgCoos_GCPCoos, e=0.0001, plot_results=False, dir_plot=None):
+#source code from Danilo Schneider rewritten for Python
 #camera_exterior: estimate of exterior orientation and position (XYZOmegaPhiKappa)
 #camera_interior: interior camera orientation (numpy array [ck, xh, yh, A1, A2, A3, B1, B2, C1, C2, r0]), Brown (aicon) model
 #ImgCoos_GCPCoos: assigned image coordinates and object coordinates of ground control points 
@@ -729,7 +708,6 @@ def resection(camera_interior, camera_exterior, ImgCoos_GCPCoos, e=0.0001, plot_
         matplotlib.rc('font', **fontProperties_text)    
         fig = plt.figure(frameon=False) 
         ax = plt.Axes(fig, [0., 0., 1., 1.])
-    #    ax.set_axis_off()
         fig.add_axes(ax)     
         ax.plot(x, y, 'go')    
         
@@ -828,8 +806,7 @@ def register_frame(img_pts, gcp_pts, cam_file, plot_results=False, image=None, r
     camMatrix[1][1] = ck
     camMatrix[1][2] = cy
     camMatrix[2][2] = 1.0           
-    distCoeff = np.asarray([k1, k2, p1, p2, k3], dtype=np.float32)   
-        
+    distCoeff = np.asarray([k1, k2, p1, p2, k3], dtype=np.float32)          
     
     '''re-organise coordinates to numpy matrix with assigned pt ids'''
     img_pts, gcp_coos, pt_id = assign_ImgToObj_Measurement(gcp_table, pts_table)
@@ -840,16 +817,12 @@ def register_frame(img_pts, gcp_pts, cam_file, plot_results=False, image=None, r
         plot.title('GCPs used for registration')
         plot.show()
         plot.close('all')
-        del plot
-    
+        del plot    
     
     '''resolve for exterior camera parameters'''
     #solve for exterior orientation
     img_pts = np.ascontiguousarray(img_pts[:,:2]).reshape((img_pts.shape[0],1,2)) #new for CV3
     _, rvec_solved, tvec_solved, inliers = cv2.solvePnPRansac(gcp_coos, img_pts, camMatrix, distCoeff, reprojectionError) # iterationsCount=2000, reprojectionError=5
-#     if not inliers == None:
-#         print('numer of used points for RANSAC PNP: ' + str(len(inliers)))
-
 #     _, rvec_solved, tvec_solved = cv2.solvePnP(gcp_coos, img_pts, camMatrix, distCoeff,
 #                                                rvec_solved, tvec_solved, useExtrinsicGuess=True)
     
@@ -864,16 +837,15 @@ def register_frame(img_pts, gcp_pts, cam_file, plot_results=False, image=None, r
 #     rot_matrix = np.asarray(rot_matrix)
 #     omega, phi, kappa = rot_matrix_to_euler(rot_matrix)
 #     rotation = np.asarray([omega, phi, kappa])
-
         
     return rot_matrix, position, inliers
 
 
 def NN_pts(reference_pts, target_pts, max_NN_dist=1, plot_results=False,
            closest_to_cam=False, ior_mat=None, eor_mat=None):   #ior_mat, eor_mat,     
+    #get nearest neighbors
     reference_pts_xy_int = np.asarray(reference_pts[:,0:2], dtype = np.int)
-    target_pts_int = np.asarray(target_pts, dtype = np.int)
-    
+    target_pts_int = np.asarray(target_pts, dtype = np.int)    
     points_list = list(target_pts_int)
 
     #define kd-tree
@@ -931,9 +903,6 @@ def NN_pts(reference_pts, target_pts, max_NN_dist=1, plot_results=False,
 
 
     print('NN skipped: ' + str(NN_skip))
-    
-#     if dist_to_pz_xy == None:
-#         return NN_points, None, None
 
     return NN_points    #, np.min(dist_to_pz_xy[:,2]), np.max(dist_to_pz_xy[:,2])
     
@@ -970,6 +939,7 @@ def exteriorFromFile(calib_results):
     eor_mat = np.vstack((eor_mat, [0,0,0,1]))
     
     return eor_mat
+
 
 def drop_dupl(x,y,z):
     df = pd.DataFrame({'x':x, 'y':y, 'z':z})

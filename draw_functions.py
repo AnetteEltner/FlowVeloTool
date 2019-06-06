@@ -25,7 +25,6 @@ import os
 import numpy as np
 import pylab as plt
 import matplotlib
-# from wx import App, ScreenDC    #to get monitor resolution
 import matplotlib.colors as mcolors
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
@@ -84,14 +83,12 @@ def drawArrowsOntoImg(image, imagePtsStart, imgPtsEnd, arrowHeadSize=0.9, fontSi
 # point_id: list of point ids in same order as corresponding image_points file; if empty no points labeled
 # dpi from screen resolution
 
-#     dpi = monitordpi()
     
     fontProperties_text = {'size' : fontSize, 
                            'family' : 'sans-serif'}
     matplotlib.rc('font', **fontProperties_text)
     
     fig = plt.figure(frameon=False) #dpi of screen resolution
-#     fig.set_size_inches(image.shape[1]/float(dpi), image.shape[0]/float(dpi)) #dpi screen resolution!
     
     ax = plt.Axes(fig, [0., 0., 1., 1.])
     ax.axis('equal')  
@@ -114,13 +111,6 @@ def drawArrowsOntoImg(image, imagePtsStart, imgPtsEnd, arrowHeadSize=0.9, fontSi
     ax.imshow(image, cmap='gray')#, aspect='normal')
         
     return plt
-
-
-# def monitordpi():
-#     app = App(0)
-#     s = ScreenDC()
-#     monitordpi = s.GetPPI()[0]
-#     return monitordpi
     
 
 def draw_tracks(Final_Vals, image, dir_out, outputImgName, variableToDraw, log_norm=False,
@@ -148,7 +138,6 @@ def draw_tracks(Final_Vals, image, dir_out, outputImgName, variableToDraw, log_n
         
         #draw figure
         fig = plt.figure(frameon=False) #dpi of screen resolution
-    #     fig.set_size_inches(image.shape[1]/float(monitordpi()), image.shape[0]/float(monitordpi())) #dpi screen resolution!
         ax = plt.Axes(fig, [0., 0., 1., 1.])
         ax.set_axis_off()
         ax.axis('equal')  
@@ -162,11 +151,6 @@ def draw_tracks(Final_Vals, image, dir_out, outputImgName, variableToDraw, log_n
         if len(image_points['id']) > 1:
             point_n = 0
             label_criteria = 0
-            
-#             bla = plt.quiver(image_points.x.values, image_points.y.values, image_points.x_tr.values-image_points.x.values, image_points.y_tr.values-image_points.y.values, 
-#                              color=scalarMap.to_rgba(image_points[variableToDraw].values), headwidth = 3, headlength=3, width=1.5)
-#             ax.quiverkey(bla,0.9, 0.9, 1, '1 [px]', labelpos='E',
-#                          coordinates='figure',fontproperties={'size':12})
 
             while point_n < image_points.shape[0]:
                 if label_data:
@@ -218,8 +202,6 @@ def draw_points_onto_image(image, image_points, point_id, markSize=2, fontSize=8
 # image_points: array with 2 columns
 # point_id: list of point ids in same order as corresponding image_points file; if empty no points labeled
 # dpi from screen resolution
-
-#     dpi = monitordpi()
     
     set_markersize = markSize
     
@@ -228,7 +210,6 @@ def draw_points_onto_image(image, image_points, point_id, markSize=2, fontSize=8
     matplotlib.rc('font', **fontProperties_text)
     
     fig = plt.figure(frameon=False) #dpi of screen resolution
-#     fig.set_size_inches(image.shape[1]/float(dpi), image.shape[0]/float(dpi)) #dpi screen resolution!
     
     ax = plt.Axes(fig, [0., 0., 1., 1.])
     ax.set_axis_off()
@@ -310,12 +291,10 @@ def draw_tracks_raster(Final_Vals, image, dir_out, outputImgName, variableToDraw
     
     #draw figure
     fig = plt.figure(frameon=False) #dpi of screen resolution
-#     fig.set_size_inches(image.shape[1]/float(monitordpi()), image.shape[0]/float(monitordpi())) #dpi screen resolution!
     ax = plt.Axes(fig, [0., 0., 1., 1.])
     ax.set_axis_off()
     ax.axis('equal')  
-    fig.add_axes(ax)
-    
+    fig.add_axes(ax)  
 
 #     edgecolor='black'
 #     markeredgewidths=0
@@ -412,8 +391,6 @@ def NN_pts(ref_pts, target_pts, max_NN_dist):
 
     #define kd-tree
     mytree = scipy.spatial.cKDTree(reference_pts_xy_int)
-#     dist, indexes = mytree.query(points_list)
-#     dist_ind = np.hstack((dist.reshape(dist.shape[0],1), indexes.reshape(indexes.shape[0],1)))
     
     #search for nearest neighbour
     indexes = mytree.query_ball_point(points_list, max_NN_dist)   #find points within specific distance (here in pixels)
@@ -449,8 +426,6 @@ def NN_difference(ref_pts, target_pts, max_NN_dist):
 
     #define kd-tree
     mytree = scipy.spatial.cKDTree(reference_pts_xy_int)
-#     dist, indexes = mytree.query(points_list)
-#     dist_ind = np.hstack((dist.reshape(dist.shape[0],1), indexes.reshape(indexes.shape[0],1)))
     
     #search for nearest neighbour
     indexes = mytree.query_ball_point(points_list, max_NN_dist)   #find points within specific distance (here in pixels)

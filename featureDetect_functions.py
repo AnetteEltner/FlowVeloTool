@@ -72,7 +72,6 @@ def defineFeatureSearchArea(pointCloud, cameraGeometry_interior, cameraGeometry_
     
     del xyd_rgb_map
     
-    
     #find border coordinates of features search mask (is within image frame and greater negative values)
     xyd_index = np.asarray(xyd[:,0:2], dtype=np.int)
     xyd_index = xyd_index[xyd_index[:,0] < cameraGeometry_interior.resolution_x]
@@ -115,7 +114,6 @@ def defineFeatureSearchArea(pointCloud, cameraGeometry_interior, cameraGeometry_
         plt.close('all')
 
     return MaskBorderPts
-
 
 
 def featureDetection(dirImg, img_name, border_pts, minimum_thresh=100, neighbor_search_radius=50,
@@ -190,17 +188,7 @@ def featureDetection(dirImg, img_name, border_pts, minimum_thresh=100, neighbor_
     
     
     '''write images'''
-    if savePlot:
-#         #unfiltered features
-#         goodFtTr[:,0] = goodFtTr[:,0] + border_col_min  #add border minimum column and row values to account for clipping of original image
-#         goodFtTr[:,1] = goodFtTr[:,1] + border_row_min  
-#         plot = drawPointsToImg(img, goodFtTr)
-#         plot.savefig(dir_out+img_name[:-4] + '_circles_unfilt.png', dpi=600)
-         
-#         #filtered via img value threshold
-#         plot = drawPointsToImg(img, FtAboveMinThresh)
-#         plot.savefig(dir_out+img_name[:-4] + '_circles_thresh.png', dpi=600, pad_inches=0)
-        
+    if savePlot:       
         #filtered via amount nearest neighbors criteria
         plot = draw_tool.drawPointsToImg(img, neighbors)
         plot.savefig(dir_out+img_name[:-4] + '_circles_NN.png', dpi=600)
@@ -373,10 +361,6 @@ def raster_clip(ras_to_clip, geotrans, polygon, visualize=False, flipped_rows=Fa
         #draw image with mask as 1 and outside as 0
         poly_coo_flat = [y for x in poly_coo_sm.tolist() for y in x]    
         ImageDraw.Draw(img).polygon(poly_coo_flat, fill=1)
-#         if visualize:
-#             plt.imshow(img)
-#             plt.show()
-        #plt.imshow(img)
         del poly_coo_x, poly_coo_y, poly_coo_sm, poly_coo_flat
         
         #convert image to array, consider that rows and columns are switched in image format
@@ -384,11 +368,6 @@ def raster_clip(ras_to_clip, geotrans, polygon, visualize=False, flipped_rows=Fa
         for pixel in iter(img.getdata()):
             mask_list.append(pixel)
         mask = np.array(mask_list).reshape(int(y_max-y_min), int(x_max-x_min))
-        #mask = mask[::-1,:]
-#         if visualize:
-#             plt.imshow(mask)
-#             plt.show()
-        #plt.imshow(mask)
         del img, mask_list
     
         #add offset rows and columns to obtain original raster size
@@ -415,8 +394,6 @@ def raster_clip(ras_to_clip, geotrans, polygon, visualize=False, flipped_rows=Fa
         ras_clipped_to_extent = np.delete(ras_clipped_to_extent, np.s_[mask.shape[1] + add_cols_left.shape[1] : ras_clipped.shape[1]], 1)
         ras_clipped_to_extent = np.delete(ras_clipped_to_extent, np.s_[0 : add_cols_left.shape[1]], 1)
 
-#         ras_clipped_0 = np.nan_to_num(ras_clipped)
-#         print np.count_nonzero(ras_clipped_0)
         del mask
         
         if visualize:
@@ -424,11 +401,7 @@ def raster_clip(ras_to_clip, geotrans, polygon, visualize=False, flipped_rows=Fa
             plt.imshow(ras_clipped)
             plt.show()
             plt.close('all')
-        
-#         new_originX_extent = geotrans[0] + add_rows_down.shape[0] * geotrans[1]
-#         new_originY_extent = geotrans[3] + add_cols_left.shape[0] * geotrans[5]
-#         new_origin_XY_extent = np.asarray([new_originX_extent, new_originY_extent])
-        
+
         if not return_rasClip:       
             return ras_clipped_to_extent
         else:
@@ -447,6 +420,7 @@ def LSPIV_features(dirImg, img_name, border_pts, templateSize_x, templateSize_y,
     img_clipped_x = raster_clip(img_id_x, 0, border_pts, False, False, False)
     img_clipped_y = raster_clip(img_id_y, 0, border_pts, False, False, False)
     
+    '''define features'''
     features_col = img_clipped_x[np.int(templateSize_x/2)::np.int(templateSize_x/2),np.int(templateSize_y/2)::np.int(templateSize_y/2)]
     features_row = img_clipped_y[np.int(templateSize_x/2)::np.int(templateSize_x/2),np.int(templateSize_y/2)::np.int(templateSize_y/2)]
     
