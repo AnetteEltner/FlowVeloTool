@@ -98,9 +98,9 @@ def drawArrowsOntoImg(image, imagePtsStart, imgPtsEnd, arrowHeadSize=0.9, fontSi
     ax.set_axis_off()
     fig.add_axes(ax)
      
-    scale_value = 0.1
+    scale_value = 0.25#0.1
     qv = ax.quiver(imagePtsStart[:,0], imagePtsStart[:,1],  
-                    (imgPtsEnd[:,0]-imagePtsStart[:,0]), (imgPtsEnd[:,1]-imagePtsStart[:,1]),
+                    (imgPtsEnd[:,0]-imagePtsStart[:,0]), (imgPtsEnd[:,1]-imagePtsStart[:,1]),   #imgPtsEnd[:,0]-imagePtsStart[:,0]), (imgPtsEnd[:,1]-imagePtsStart[:,1]
                     facecolor='red', linewidth=.1, width=.001, headwidth=5, 
                     headlength=5, angles='xy', scale_units='xy', scale=scale_value, edgecolor='')
     qk = ax.quiverkey(qv, arrowHeadSize, arrowHeadSize, 1, 'arrow scale 1:' + str(int(1/scale_value)), 
@@ -153,13 +153,20 @@ def draw_tracks(Final_Vals, image, dir_out, outputImgName, variableToDraw, log_n
             label_criteria = 0
 
             while point_n < image_points.shape[0]:
-                if label_data:
-                    label, xl, yl, arr_x, arr_y = image_points[variableToLabel][point_n], image_points['x'][point_n], image_points['y'][point_n], image_points['x_tr'][point_n], image_points['y_tr'][point_n]
-                else:
-                    xl, yl, arr_x, arr_y = image_points['x'][point_n], image_points['y'][point_n], image_points['x_tr'][point_n], image_points['y_tr'][point_n]
+                try:
+                    if label_data:
+                        label, xl, yl, arr_x, arr_y = image_points[variableToLabel][point_n], image_points['x'][point_n], image_points['y'][point_n], image_points['x_tr'][point_n], image_points['y_tr'][point_n]
+                    else:
+                        xl, yl, arr_x, arr_y = image_points['x'][point_n], image_points['y'][point_n], image_points['x_tr'][point_n], image_points['y_tr'][point_n]
                  
-                ax.arrow(xl, yl, arr_x-xl, arr_y-yl, color=scalarMap.to_rgba(image_points[variableToDraw][point_n]), head_width = 3, head_length=3, width=1.5)
-                point_n = point_n + 1
+                    ax.arrow(xl, yl, arr_x-xl, arr_y-yl, color=scalarMap.to_rgba(image_points[variableToDraw][point_n]), head_width = 3, head_length=3, width=1.5) # arr_x-xl, arr_y-yl
+                    point_n = point_n + 1
+                
+                except Exception as e:
+#                    print(e)
+#                    print ('skipped point: ' + str(point_n))
+#                    print(xl, yl, arr_x-xl, arr_y-yl)
+                    point_n = point_n + 1
      
                 if label_data:            
                     if label_criteria == 0:

@@ -120,10 +120,10 @@ def FeatureDetectionPTV(dir_imgs, img_list, frameCount, minimumThreshBrightness,
     return featuresToTrack, first_loop, feature_ID_max
 
 
-def FeatureDetectionLSPIV(dir_imgs, img_list, frameCount, template_width, template_height, searchMask, FD_everyIthFrame,
+def FeatureDetectionLSPIV(dir_imgs, img_list, frameCount, pointDistX, pointDistY, searchMask, FD_everyIthFrame,
                           savePlotData, directoryOutput, first_loop, feature_ID_max=None):
     #extract features in search area with pre-defined grid
-    featuresToTrack = detectF.LSPIV_features(dir_imgs, img_list[frameCount], searchMask, template_width, template_height, savePlotData,
+    featuresToTrack = detectF.LSPIV_features(dir_imgs, img_list[frameCount], searchMask, pointDistX, pointDistY, savePlotData,
                                              directoryOutput)
     feature_ID = np.array(range(featuresToTrack.shape[0]))        
            
@@ -154,11 +154,22 @@ def FeatureDetectionLSPIV(dir_imgs, img_list, frameCount, template_width, templa
 def FeatureTracking(template_width, template_height, search_area_x_CC, search_area_y_CC, shiftSearchFromCenter_x, shiftSearchFromCenter_y,
                     frameCount, FT_forNthNberFrames, TrackEveryNthFrame, dir_imgs, img_list, featuresToTrack, interior_orient,
                     performLSM, lsmBuffer, threshLSM, subpixel, trackedFeaturesOutput_undist, save_gif, imagesForGif, directoryOutput,
-                    lk, initialEstimatesLK):
+                    lk, initialEstimatesLK, maxDistBackForward_px=1):
     #prepare function input
     template_size = np.asarray([template_width, template_height])
     search_area = np.asarray([search_area_x_CC, search_area_y_CC])
     shiftSearchArea = np.asarray([shiftSearchFromCenter_x, shiftSearchFromCenter_y])
+    
+    #save initial pixel position of features
+    trackedFeatures0_undist = photogrF.undistort_img_coos(featuresToTrack[:,1:3], interior_orient)
+    trackedFeatures0_undist_px = photogrF.metric_to_pixel(trackedFeatures0_undist, interior_orient.resolution_x, interior_orient.resolution_y, 
+                                                          interior_orient.sensor_size_x, interior_orient.sensor_size_y)        
+    frame_name0 = np.asarray([img_list[frameCount] for x in range(featuresToTrack.shape[0])])
+    trackedFeaturesOutput_undist0 = np.hstack((frame_name0, featuresToTrack[:,0]))
+    trackedFeaturesOutput_undist0 = np.hstack((trackedFeaturesOutput_undist0, trackedFeatures0_undist_px[:,0]))
+    trackedFeaturesOutput_undist0 = np.hstack((trackedFeaturesOutput_undist0, trackedFeatures0_undist_px[:,1]))
+    trackedFeaturesOutput_undist0 = trackedFeaturesOutput_undist0.reshape(4, frame_name0.shape[0]).T
+    trackedFeaturesOutput_undist.extend(trackedFeaturesOutput_undist0) 
     
     #loop through images
     img_nbr_tracking = frameCount
@@ -188,12 +199,19 @@ def FeatureTracking(template_width, template_height, search_area_x_CC, search_ar
                 #perform tracking
                 trackedFeaturesLK, status = trackF.performFeatureTrackingLK(templateImg, searchImg, featuresToTrack[:,1:],
                                                                             initialEstimatesLK, featureEstimatesNextFrame,
-                                                                            search_area_x_CC, search_area_y_CC)
+                                                                            search_area_x_CC, search_area_y_CC, maxDistBackForward_px)
                 
                 featuresId = featuresToTrack[:,0]
                 trackedFeaturesLKFiltered = np.hstack((featuresId.reshape(featuresId.shape[0],1), trackedFeaturesLK))
                 trackedFeaturesLKFiltered = np.hstack((trackedFeaturesLKFiltered, status))
+                
+                #remove points with erroneous LK tracking (ccheck column 3)
                 trackedFeaturesLK_px = trackedFeaturesLKFiltered[~np.all(trackedFeaturesLKFiltered == 0, axis=1)]
+                
+                #drop rows with nan values (which are features that failed back-forward tracking test)
+                trackedFeaturesLK_pxDF = pd.DataFrame(trackedFeaturesLK_px)
+                trackedFeaturesLK_pxDF = trackedFeaturesLK_pxDF.dropna()
+                trackedFeaturesLK_px = np.asarray(trackedFeaturesLK_pxDF)
                 
                 trackedFeatures = trackedFeaturesLK_px[:,0:3]
                 
@@ -223,6 +241,17 @@ def FeatureTracking(template_width, template_height, search_area_x_CC, search_ar
                     #perform tracking
                     trackedFeature_px = trackF.performFeatureTracking(template_size, search_area, featureToTrack[1:], templateImg, searchImg, 
                                                                       shiftSearchArea, performLSM, lsmBuffer, threshLSM, subpixel, False)
+                    
+                    #check backwards
+                    trackedFeature_pxCheck = trackF.performFeatureTracking(template_size, search_area, trackedFeature_px, searchImg, templateImg, 
+                                                                           -1*shiftSearchArea, performLSM, lsmBuffer, threshLSM, subpixel, False)                    
+                    #set points that fail backward forward tracking test to nan
+                    distBetweenBackForward = abs(featureToTrack[1:]-trackedFeature_pxCheck).reshape(-1, 2).max(-1)
+                    if distBetweenBackForward > maxDistBackForward_px:
+                        print('feature ' + str(featureToTrack[0]) + ' failed backward test.')
+                        x = 1/0
+                    
+                    #join tracked feature and id of feature
                     trackedFeatures.append([featureToTrack[0], trackedFeature_px[0], trackedFeature_px[1]])
                     
                     #undistort tracked feature measurement
@@ -231,11 +260,11 @@ def FeatureTracking(template_width, template_height, search_area_x_CC, search_ar
                                                                         interior_orient.sensor_size_x, interior_orient.sensor_size_y)    
                     trackedFeaturesOutput_undist.append([img_list[img_nbr_tracking+TrackEveryNthFrame], int(featureToTrack[0]), 
                                                          trackedFeature_undist_px[0,0], trackedFeature_undist_px[0,1]])
-                    
-                except Exception as e:
+                        
+                except:
                     print('stopped tracking feature ' + str(featureToTrack[0]) + ' after frame ' 
-                          + img_list[img_nbr_tracking] + '\n')  
-    
+                          + img_list[img_nbr_tracking] + '\n')     
+            
             trackedFeatures = np.asarray(trackedFeatures)
                 
         print('nbr of tracked features: ' + str(trackedFeatures.shape[0]) + '\n')
@@ -262,8 +291,9 @@ def FeatureTracking(template_width, template_height, search_area_x_CC, search_ar
 def FilterTracks(trackedFeaturesOutput_undist, dir_imgs, img_list, directoryOutput,
                  minDistance_px, maxDistance_px, minimumTrackedFeatures, 
                  threshAngleSteadiness, threshAngleRange,
-                 binNbrMainflowdirection, MainFlowAngleBuffer):
-    #filter tracks considering several filter parameters
+                 binNbrMainflowdirection, MainFlowAngleBuffer, lspiv):
+    '''filter tracks considering several filter parameters'''
+    #transform dataframe to numpy array and get feature ids
     trackedFeaturesOutput_undist = np.asarray(trackedFeaturesOutput_undist)
     trackedFeaturesOutput_undist = np.asarray(trackedFeaturesOutput_undist[:,1:4], dtype=np.float)
     featureIDs_fromTracking = np.unique(trackedFeaturesOutput_undist[:,0])
@@ -273,7 +303,10 @@ def FilterTracks(trackedFeaturesOutput_undist, dir_imgs, img_list, directoryOutp
         processFeature = trackedFeaturesOutput_undist[trackedFeaturesOutput_undist[:,0] == feature, 1:3]
         
         #get distance between tracked features across subsequent frames in image space
-        xy_start_tr = processFeature[:-1,:]
+        if lspiv:
+            xy_start_tr = np.ones((processFeature.shape[0]-1,processFeature.shape[1])) * processFeature[0,:]
+        else:
+            xy_start_tr = processFeature[:-1,:]
         xy_tr = processFeature[1:,:]        
         dist = np.sqrt(np.square(xy_start_tr[:,0] - xy_tr[:,0]) + (np.square(xy_start_tr[:,1] - xy_tr[:,1])))
         
@@ -294,19 +327,25 @@ def FilterTracks(trackedFeaturesOutput_undist, dir_imgs, img_list, directoryOutp
     print('nbr features prior filtering: ' + str(np.unique(Features_px.id).shape[0]) + '\n')
     nbr_features_raw = np.unique(Features_px.id).shape[0]
        
-    #minimum tracking distance 
-    filteredFeatures_id = Features_px[Features_px.dist < minDistance_px]
-    filteredFeatures_id = filteredFeatures_id.id.unique()
-    filteredFeatures = Features_px[~Features_px.id.isin(filteredFeatures_id)]
+    #minimum tracking distance
+    if lspiv:
+        filteredFeatures = Features_px[Features_px.dist > minDistance_px]
+    else:
+        filteredFeatures_id = Features_px[Features_px.dist < minDistance_px]
+        filteredFeatures_id = filteredFeatures_id.id.unique()
+        filteredFeatures = Features_px[~Features_px.id.isin(filteredFeatures_id)]
     filteredFeatures = filteredFeatures.reset_index(drop=True)
     drawF.draw_tracks(filteredFeatures, image, directoryOutput, 'TracksFilteredMinDist.png', 'dist', True)
     print('nbr features after minimum distance filter: ' + str(np.unique(filteredFeatures.id).shape[0]))
     nbr_features_mindist = np.unique(filteredFeatures.id).shape[0]
         
     #maximum tracking distance
-    filteredFeatures_id = Features_px[Features_px.dist > maxDistance_px]
-    filteredFeatures_id = filteredFeatures_id.id.unique()
-    filteredFeatures = filteredFeatures[~filteredFeatures.id.isin(filteredFeatures_id)]
+    if lspiv:
+        filteredFeatures = filteredFeatures[filteredFeatures.dist < maxDistance_px]
+    else:    
+        filteredFeatures_id = Features_px[Features_px.dist > maxDistance_px]
+        filteredFeatures_id = filteredFeatures_id.id.unique()
+        filteredFeatures = filteredFeatures[~filteredFeatures.id.isin(filteredFeatures_id)]
     filteredFeatures = filteredFeatures.reset_index(drop=True)
     drawF.draw_tracks(filteredFeatures, image, directoryOutput, 'TracksFilteredMaxDist.png', 'dist', True)
     print('nbr features after maximum distance filter: ' + str(np.unique(filteredFeatures.id).shape[0]))
@@ -345,7 +384,7 @@ def FilterTracks(trackedFeaturesOutput_undist, dir_imgs, img_list, directoryOutp
     filteredFeatures, flowdir_angle = filterF.TrackFilterMainflowdirection(filteredFeatures, binNbrMainflowdirection, MainFlowAngleBuffer)
     drawF.draw_tracks(filteredFeatures, image, directoryOutput, 'TracksFilteredFlowDir.png', 'dist', True)
     print('nbr features after flow directions filter: ' + str(np.unique(filteredFeatures.id).shape[0]))
-    nbr_features_mainflowdir = np.unique(filteredFeatures.id).shape[0]
+    nbr_features_mainflowdir = np.unique(filteredFeatures.id).shape[0]        
 
     #save filter results
     filteredFeatures.to_csv(directoryOutput + 'TracksFiltered_px.txt', sep='\t', index=False)
@@ -355,48 +394,84 @@ def FilterTracks(trackedFeaturesOutput_undist, dir_imgs, img_list, directoryOutp
 
 
 def TracksPx_to_TracksMetric(filteredFeatures, minimumTrackedFeatures, interior_orient, eor_mat, unit_gcp,
-                             frame_rate_cam, TrackEveryNthFrame, waterlevel_pt, directoryOutput, dir_imgs, img_list):
+                             frame_rate_cam, TrackEveryNthFrame, waterlevel_pt, directoryOutput, dir_imgs, 
+                             img_list, veloStdThresh, lspiv):
     #scale tracks in image space to tracks in object space to get flow velocity in m/s
     waterlevel = waterlevel_pt
 
     image = cv2.imread(dir_imgs + img_list[0], 0)
 
-    #get first and last position in image space of each tracked feature
-    filteredFeatures_1st = filteredFeatures.groupby('id', as_index=False).head(1)   
-    filteredFeatures_last = filteredFeatures.groupby('id', as_index=False).tail(1)  
-    filteredFeatures_count = np.asarray(filteredFeatures.groupby('id', as_index=False).count())[:,2]  
+    if lspiv:
+        xy_start_tr = np.asarray(filteredFeatures[['x','y']])
+        xy_tr = np.asarray(filteredFeatures[['x_tr', 'y_tr']])
+        id_features = np.asarray(filteredFeatures['id'])        
+        
+    else:
+        #get first and last position in image space of each tracked feature
+        filteredFeatures_1st = filteredFeatures.groupby('id', as_index=False).head(1)   
+        filteredFeatures_last = filteredFeatures.groupby('id', as_index=False).tail(1)  
+        filteredFeatures_count = np.asarray(filteredFeatures.groupby('id', as_index=False).count())[:,2]  
 
-    xy_start_tr = np.asarray(filteredFeatures_1st[['x', 'y']])
-    xy_tr = np.asarray(filteredFeatures_last[['x', 'y']])
+        xy_start_tr = np.asarray(filteredFeatures_1st[['x', 'y']])
+        xy_tr = np.asarray(filteredFeatures_last[['x_tr', 'y_tr']])
 
     #intersect first and last position with waterlevel
     XY_start_tr = refF.LinePlaneIntersect(xy_start_tr, waterlevel, interior_orient, eor_mat, unit_gcp) / unit_gcp
     XY_tr = refF.LinePlaneIntersect(xy_tr, waterlevel, interior_orient, eor_mat, unit_gcp) / unit_gcp
 
-    filteredFeatures_1st.loc[:,'X'] = pd.Series(XY_start_tr[:,0], index=filteredFeatures_1st.index)
-    filteredFeatures_1st.loc[:,'Y'] = pd.Series(XY_start_tr[:,1], index=filteredFeatures_1st.index)
-    filteredFeatures_1st.loc[:,'Z'] = pd.Series(XY_start_tr[:,2], index=filteredFeatures_1st.index)
-    filteredFeatures_1st.loc[:,'X_tr'] = pd.Series(XY_tr[:,0], index=filteredFeatures_1st.index)
-    filteredFeatures_1st.loc[:,'Y_tr'] = pd.Series(XY_tr[:,1], index=filteredFeatures_1st.index)
-
     #get corresponding distance in object space
     dist_metric = np.sqrt(np.square(XY_start_tr[:,0] - XY_tr[:,0]) + (np.square(XY_start_tr[:,1] - XY_tr[:,1]))) 
-    filteredFeatures_1st.loc[:,'dist_metric'] = pd.Series(dist_metric, index=filteredFeatures_1st.index)
-    
-    filteredFeatures_1st.loc[:,'count'] = pd.Series(filteredFeatures_count, index=filteredFeatures_1st.index)
 
     #get corresponding temporal observation span
-    frame_rate_cam = np.ones((filteredFeatures_count.shape[0],1), dtype=np.float) * frame_rate_cam
-    nbrTrackedFrames = TrackEveryNthFrame * filteredFeatures_count
-    trackingDuration = nbrTrackedFrames.reshape(frame_rate_cam.shape[0],1) / frame_rate_cam 
+    if lspiv:
+        trackingDuration = np.ones((id_features.shape[0],1), dtype=np.float) * TrackEveryNthFrame / np.float(frame_rate_cam)
+    else:
+        frame_rate_cam = np.ones((filteredFeatures_count.shape[0],1), dtype=np.float) * np.float(frame_rate_cam)
+        nbrTrackedFrames = TrackEveryNthFrame * (filteredFeatures_count+1)
+        trackingDuration = nbrTrackedFrames.reshape(frame_rate_cam.shape[0],1) / frame_rate_cam 
 
     #get velocity
     velo = dist_metric.reshape(trackingDuration.shape[0],1) / trackingDuration
-    filteredFeatures_1st.loc[:,'velo'] = pd.Series(velo.flatten(), index=filteredFeatures_1st.index)
-
-    filteredFeatures_1st.loc[:,'x_tr'] = pd.Series(xy_tr[:,0], index=filteredFeatures_1st.index)
-    filteredFeatures_1st.loc[:,'y_tr'] = pd.Series(xy_tr[:,1], index=filteredFeatures_1st.index)
-    filteredFeatures = filteredFeatures_1st
+    
+    if lspiv:
+        filteredFeaturesPIV = pd.DataFrame(id_features, columns=['id'])        
+        filteredFeaturesPIV = filterFeatureOrganise(filteredFeaturesPIV, XY_start_tr, XY_tr, xy_tr, dist_metric, velo, 
+                                                    False, None, filteredFeatures[['x','y']])
+        drawF.draw_tracks(filteredFeaturesPIV.groupby('id', as_index=False).mean(), image, directoryOutput, 'TracksReferenced_rawPIV.jpg', 'velo', True)
+        filteredFeaturesPIV.to_csv(directoryOutput + 'TracksReferenced_rawPIV.txt', sep='\t', index=False)
+               
+        #filter outliers considering mean and std dev for each grid cell
+        filteredFeaturesPIV.loc[:,'veloMean'] = pd.Series(np.empty((len(filteredFeaturesPIV))))        
+        filteredFeaturesPIV.loc[:,'veloStd'] = pd.Series(np.empty((len(filteredFeaturesPIV))))
+        filteredFeatureMean = filteredFeaturesPIV.groupby('id', as_index=False).velo.mean()
+        filteredFeaturesStd = filteredFeaturesPIV.groupby('id', as_index=False).velo.std()
+        filteredFeaturesId = filteredFeaturesPIV.groupby('id', as_index=False).id.mean()
+        
+        featureCount = 0
+        while featureCount < len(filteredFeaturesId)-1:
+            filteredFeaturesPIV.loc[filteredFeaturesPIV.id == filteredFeaturesId.loc[featureCount], 'veloMean'] = filteredFeatureMean.loc[featureCount,'velo']
+            filteredFeaturesPIV.loc[filteredFeaturesPIV.id == filteredFeaturesId.loc[featureCount], 'veloStd'] = filteredFeaturesStd.loc[featureCount,'velo']  
+            featureCount = featureCount + 1
+ 
+        filteredFeaturesPIV.loc[:,'threshPos'] = filteredFeaturesPIV.veloMean + 5 * filteredFeaturesPIV.veloStd
+        filteredFeaturesPIV.loc[:,'threshNeg'] = filteredFeaturesPIV.veloMean - 5 * filteredFeaturesPIV.veloStd
+        filteredFeaturesPIV = filteredFeaturesPIV[filteredFeaturesPIV.velo < filteredFeaturesPIV.threshPos]
+        filteredFeaturesPIV = filteredFeaturesPIV[filteredFeaturesPIV.velo > filteredFeaturesPIV.threshNeg]     
+        
+        #also filter based on direction
+        #...
+        
+        filteredFeaturesPIV_grouped = filteredFeaturesPIV.groupby('id', as_index=False).mean()
+        filteredFeaturesCount = filteredFeaturesPIV.groupby('id', as_index=False).count()
+        filteredFeaturesPIV_grouped.loc[:,'count'] = filteredFeaturesCount.loc[:,'velo']
+        filteredFeaturesPIV_grouped = filteredFeaturesPIV_grouped.drop(columns=['veloMean','veloStd','threshPos','threshNeg'])
+        
+        filteredFeatures = filteredFeaturesPIV_grouped
+        
+    else:
+        filteredFeatures_1st = filterFeatureOrganise(filteredFeatures_1st, XY_start_tr, XY_tr, xy_tr, dist_metric, velo, 
+                                                     True, filteredFeatures_count)
+        filteredFeatures = filteredFeatures_1st
 
     #write referenced tracking results to file
     print('nbr of tracked features: ' + str(filteredFeatures.shape[0]) + '\n')
@@ -406,8 +481,8 @@ def TracksPx_to_TracksMetric(filteredFeatures, minimumTrackedFeatures, interior_
     #filter for outlier velocities
     MeanVeloAll = filteredFeatures.velo.mean()
     StdVeloAll = filteredFeatures.velo.std()
-    threshVelo_Pos = MeanVeloAll + 1.5 * StdVeloAll
-    threshVelo_Neg = MeanVeloAll - 1.5 * StdVeloAll
+    threshVelo_Pos = MeanVeloAll + veloStdThresh * StdVeloAll
+    threshVelo_Neg = MeanVeloAll - veloStdThresh * StdVeloAll
 
     filteredFeatures = filteredFeatures[filteredFeatures.velo < threshVelo_Pos]
     filteredFeatures = filteredFeatures[filteredFeatures.velo > threshVelo_Neg]
@@ -416,3 +491,26 @@ def TracksPx_to_TracksMetric(filteredFeatures, minimumTrackedFeatures, interior_
     print('nbr of final tracked features: ' + str(filteredFeatures.shape[0]) + '\n')
     filteredFeatures.to_csv(directoryOutput + 'TracksFiltered.txt', sep='\t', index=False)
     drawF.draw_tracks(filteredFeatures, image, directoryOutput, 'TracksFiltered.jpg', 'velo', True)
+
+
+def filterFeatureOrganise(organizeDataframe, XYZ, XtrYtr, xytr, distMetric, Velo, 
+                          ptv=True, count=None, xy=None):    
+    organizeDataframe.loc[:,'X'] = pd.Series(XYZ[:,0], index=organizeDataframe.index)
+    organizeDataframe.loc[:,'Y'] = pd.Series(XYZ[:,1], index=organizeDataframe.index)
+    organizeDataframe.loc[:,'Z'] = pd.Series(XYZ[:,2], index=organizeDataframe.index)
+    organizeDataframe.loc[:,'X_tr'] = pd.Series(XtrYtr[:,0], index=organizeDataframe.index)
+    organizeDataframe.loc[:,'Y_tr'] = pd.Series(XtrYtr[:,1], index=organizeDataframe.index)      
+
+    organizeDataframe.loc[:,'velo'] = pd.Series(Velo.flatten(), index=organizeDataframe.index)
+    organizeDataframe.loc[:,'dist_metric'] = pd.Series(distMetric, index=organizeDataframe.index)
+    
+    if ptv:
+        organizeDataframe.loc[:,'count'] = pd.Series(count, index=organizeDataframe.index)
+    else:
+        organizeDataframe.loc[:,'x'] = xy.loc[:,'x']
+        organizeDataframe.loc[:,'y'] = xy.loc[:,'y']
+ 
+    organizeDataframe.loc[:,'x_tr'] = pd.Series(xytr[:,0], index=organizeDataframe.index)
+    organizeDataframe.loc[:,'y_tr'] = pd.Series(xytr[:,1], index=organizeDataframe.index)
+    
+    return organizeDataframe

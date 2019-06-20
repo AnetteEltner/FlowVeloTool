@@ -41,11 +41,52 @@ def TrackFilterMinCount(image_points, minCount):
     pts_count = np.asarray(pts_count)
     
     #keep only tracks, where feature is tracked across minimum number of frames
-    PtsToKeep_TrackLongEnough = pts_count[pts_count[:,1] > minCount]
+    PtsToKeep_TrackLongEnough = pts_count[pts_count[:,1] >= minCount]
     image_points = image_points[image_points.id.isin(PtsToKeep_TrackLongEnough[:,0])]
     image_points = image_points.reset_index(drop=True)
     
     return image_points
+
+
+def TrackFilterSteadiness(image_points, threshAngle):
+    threshAngle_rad = np.radians(threshAngle)
+    StdAnglePerTrack = image_points.groupby('id', as_index=True).angle.std()
+    StdAnglePerTrack = StdAnglePerTrack.fillna(0)
+    print("Average std dev flow direction: " + str(np.degrees(np.nanmean(StdAnglePerTrack))))
+
+    #keep only tracks, where tracked feature across frames are steady enough
+    id_steady = StdAnglePerTrack[StdAnglePerTrack < threshAngle_rad]
+    id_steady = id_steady.dropna()
+    if len(id_steady) > 0:
+        image_points = image_points[image_points.id.isin(id_steady.index.values)]
+        angleStd_out = np.degrees(np.average(StdAnglePerTrack))
+    else:
+        angleStd_out = np.nan
+        
+    image_points = image_points.reset_index(drop=True)
+
+    return image_points, angleStd_out  #export tracks
+    
+
+def TrackFilterAngleRange(image_points, threshAngleRange):
+    threshAngleRange_rad = np.radians(threshAngleRange)
+    MaxAnglePerTrack = image_points.groupby('id', as_index=True).angle.max()
+    MinAnglePerTrack = image_points.groupby('id', as_index=True).angle.min()
+    RangeAnglePerTrack = MaxAnglePerTrack - MinAnglePerTrack
+    print("Average range flow direction: " + str(np.degrees(np.nanmean(RangeAnglePerTrack))))
+
+    #keep only tracks, where range of directions of tracked feature across frames are below threshold
+    id_range = RangeAnglePerTrack[RangeAnglePerTrack < threshAngleRange_rad]
+    id_range = id_range.dropna()
+    if len(id_range) > 0:
+        image_points = image_points[image_points.id.isin(id_range.index.values)]
+        angleStd_out = np.degrees(np.average(RangeAnglePerTrack))
+    else:
+        angleStd_out = np.nan
+        
+    image_points = image_points.reset_index(drop=True)
+
+    return image_points, angleStd_out  #export tracks 
 
 
 def angleBetweenVecAndXaxis(track):
@@ -64,36 +105,6 @@ def angleBetweenVecAndXaxis(track):
     angle = np.arccos(dotProd_vect/(len_vec_xy*len_vec_xy_tr))
     
     return angle
-
-
-def TrackFilterSteadiness(image_points, threshAngle):
-    threshAngle_rad = np.radians(threshAngle)
-    StdAnglePerTrack = image_points.groupby('id', as_index=True).angle.std()
-    print("Average std dev flow direction: " + str(np.degrees(np.average(StdAnglePerTrack))))
-
-    #keep only tracks, where tracked feature across frames are steady enough
-    id_steady = StdAnglePerTrack[StdAnglePerTrack < threshAngle_rad]
-    image_points = image_points[image_points.id.isin(id_steady.index.values)]
-        
-    image_points = image_points.reset_index(drop=True)
-
-    return image_points, np.degrees(np.average(StdAnglePerTrack)) #export tracks including newly calculated angle
-    
-
-def TrackFilterAngleRange(image_points, threshAngleRange):
-    threshAngleRange_rad = np.radians(threshAngleRange)
-    MaxAnglePerTrack = image_points.groupby('id', as_index=True).angle.max()
-    MinAnglePerTrack = image_points.groupby('id', as_index=True).angle.min()
-    RangeAnglePerTrack = MaxAnglePerTrack - MinAnglePerTrack
-    print("Average range flow direction: " + str(np.degrees(np.average(RangeAnglePerTrack))))
-
-    #keep only tracks, where range of directions of tracked feature across frames are below threshold
-    id_range = RangeAnglePerTrack[RangeAnglePerTrack < threshAngleRange_rad]
-    image_points = image_points[image_points.id.isin(id_range.index.values)]
-        
-    image_points = image_points.reset_index(drop=True)
-
-    return image_points, np.degrees(np.average(RangeAnglePerTrack)) #export tracks including newly calculated angle
 
 
 def TrackFilterMainflowdirection(image_points, binNbr, angle_buffer=10):    
@@ -156,16 +167,17 @@ def TrackFilterMainflowdirection(image_points, binNbr, angle_buffer=10):
              
         grouped_img_pts = pd.concat([MedianAnglePerTrack, MedianAnglePerTrack], axis=1)
         grouped_img_pts = grouped_img_pts.loc[np.asarray(angle_filtered_IdForImgPtsDf, dtype=int)[:,0]]
-             
+        
         image_points = image_points[~image_points.id.isin(grouped_img_pts.index.values)]
         
     else:
         #...or use median angle for all first-last vectors
-        angle_buffer_rad = np.radians(angle_buffer) 
+        angle_buffer_rad = np.radians(angle_buffer)
         threshAngle = [np.median(MedianAnglePerTrack) - angle_buffer_rad, np.median(MedianAnglePerTrack) + angle_buffer_rad]
         
         MedianAnglePerTrack_filt = MedianAnglePerTrack[MedianAnglePerTrack > threshAngle[0]]
         MedianAnglePerTrack_filt = MedianAnglePerTrack_filt[MedianAnglePerTrack_filt < threshAngle[1]]
+        MedianAnglePerTrack_filt = MedianAnglePerTrack_filt.dropna()
         image_points = image_points[image_points.id.isin(MedianAnglePerTrack_filt.index.values)]
         
     image_points = image_points.reset_index(drop=True)

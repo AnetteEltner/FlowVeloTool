@@ -408,7 +408,7 @@ def raster_clip(ras_to_clip, geotrans, polygon, visualize=False, flipped_rows=Fa
             return ras_clipped_to_extent, ras_clipped, np.asarray([x_min, y_min])
 
         
-def LSPIV_features(dirImg, img_name, border_pts, templateSize_x, templateSize_y, savePlot=False, dir_out=''):
+def LSPIV_features(dirImg, img_name, border_pts, pointDist_x, pointDist_y, savePlot=False, dir_out=''):
     
     '''Load image and clip image'''
     img = cv2.imread(dirImg + img_name, 0)             
@@ -421,8 +421,8 @@ def LSPIV_features(dirImg, img_name, border_pts, templateSize_x, templateSize_y,
     img_clipped_y = raster_clip(img_id_y, 0, border_pts, False, False, False)
     
     '''define features'''
-    features_col = img_clipped_x[np.int(templateSize_x/2)::np.int(templateSize_x/2),np.int(templateSize_y/2)::np.int(templateSize_y/2)]
-    features_row = img_clipped_y[np.int(templateSize_x/2)::np.int(templateSize_x/2),np.int(templateSize_y/2)::np.int(templateSize_y/2)]
+    features_col = img_clipped_x[np.int(pointDist_x/2)::np.int(pointDist_x/2),np.int(pointDist_y/2)::np.int(pointDist_y/2)]
+    features_row = img_clipped_y[np.int(pointDist_x/2)::np.int(pointDist_x/2),np.int(pointDist_y/2)::np.int(pointDist_y/2)]
     
     features = np.hstack((features_row.reshape(features_row.shape[0]*features_row.shape[1],1), 
                           features_col.reshape(features_col.shape[0]*features_col.shape[1],1)))

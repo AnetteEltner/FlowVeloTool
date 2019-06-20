@@ -202,7 +202,7 @@ class FlowVeloTool:
         self.unit_gcp.set(1000)                
          
 
-        #parameter feature detection       
+        #parameters feature detection       
         self.yAddText = self.yAddText + 40
         Label(frame, text="Feature detection", font=("Courier", 10)).place(x=10, y=self.yAddText)
  
@@ -252,26 +252,42 @@ class FlowVeloTool:
         self.sensitiveFD = tk.DoubleVar()
         self.sensitiveFD_Param = Entry(frame, textvariable=self.sensitiveFD, font=("Helvetica", 10, 'italic'))
         self.sensitiveFD_Param.place(x=self.xText, y=self.yAddText, width=75, height=20)
-        self.sensitiveFD.set(0.02)                      
- 
+        self.sensitiveFD.set(0.02)
+
+        self.yAddText = self.yAddText + 20         
+        Label(frame, text="PIV cell width: ").place(x=10, y=self.yAddText)
+        self.pointDistX = tk.IntVar()
+        self.pointDistX_Param = Entry(frame, textvariable=self.pointDistX, font=("Helvetica", 10, 'italic'))
+        self.pointDistX_Param.place(x=self.xText, y=self.yAddText, width=75, height=20)
+        self.pointDistX.set(200)
+        self.pointDistX_Param.config(state='disabled')
+        
+        self.yAddText = self.yAddText + 20         
+        Label(frame, text="PIV cell height: ").place(x=10, y=self.yAddText)
+        self.pointDistY = tk.IntVar()
+        self.pointDistY_Param = Entry(frame, textvariable=self.pointDistY, font=("Helvetica", 10, 'italic'))
+        self.pointDistY_Param.place(x=self.xText, y=self.yAddText, width=75, height=20)
+        self.pointDistY.set(200)        
+        self.pointDistY_Param.config(state='disabled')
+
         self.yAddText = self.yAddText + 20            
  
  
         #parameters feature tracking
-        self.yAddText2 = self.yAddText - 145
+        self.yAddText2 = self.yAddText - 185
         Label(frame, text="Feature tracking", font=("Courier", 10)).place(x=self.xText2, y=self.yAddText2)
         
         self.yAddText2 = self.yAddText2 + 20     
         self.lk = tk.BooleanVar()
         self.lk.set(False)
         self.lkBut = tk.Checkbutton(frame, text = "LK", variable=self.lk, font=("Helvetica", 10), 
-                                       command = lambda:self.checkLK())
+                                    command = lambda:self.checkLK())
         self.lkBut.place(x=self.xText2-10, y=self.yAddText2)
         
         self.initialLK = tk.BooleanVar()
         self.initialLK.set(False)
         self.initialLKBut = tk.Checkbutton(frame, text = "Initial Estimates LK", variable=self.initialLK, font=("Helvetica", 10),
-                                     command = lambda:self.checkLK())
+                                           command = lambda:self.checkLK())
         self.initialLKBut.place(x=self.xText2 + 45, y=self.yAddText2)
         self.initialLKBut.config(state='disabled')           
    
@@ -589,6 +605,10 @@ class FlowVeloTool:
             self.sensitiveFD_Param.config(stat = 'disabled')
             self.FT_forNthNberFrames_Param.config(stat = 'disabled')
             self.FT_forNthNberFrames.set(1)
+            self.pointDistX_Param.config(state = 'normal')
+            self.pointDistY_Param.config(state = 'normal')
+            self.minimumTrackedFeatures.set(0)
+            self.minimumTrackedFeatures_Param.config(stat = 'disabled') 
             self.ptv.set(False)            
         else:
             self.maxFtNbr_FD_Param.config(state = 'normal')
@@ -597,6 +617,10 @@ class FlowVeloTool:
             self.maximumNeighbors_FD_Param.config(state = 'normal')
             self.sensitiveFD_Param.config(stat = 'normal')
             self.FT_forNthNberFrames_Param.config(stat = 'normal')
+            self.pointDistX_Param.config(state = 'disabled')
+            self.pointDistY_Param.config(state = 'disabled') 
+            self.minimumTrackedFeatures_Param.config(stat = 'normal')
+            self.minimumTrackedFeatures.set(66)
             self.ptv.set(True)
 
     def checkPTV(self):
@@ -607,7 +631,11 @@ class FlowVeloTool:
             self.maximumNeighbors_FD_Param.config(state = 'disabled')
             self.sensitiveFD_Param.config(stat = 'disabled')
             self.FT_forNthNberFrames_Param.config(stat = 'disabled')
-            self.FT_forNthNberFrames.set(1)            
+            self.FT_forNthNberFrames.set(1)
+            self.pointDistX_Param.config(state = 'normal')
+            self.pointDistY_Param.config(state = 'normal')
+            self.minimumTrackedFeatures.set(0)
+            self.minimumTrackedFeatures_Param.config(stat = 'disabled')             
             self.lspiv.set(True)        
         else:
             self.maxFtNbr_FD_Param.config(state = 'normal')
@@ -615,8 +643,12 @@ class FlowVeloTool:
             self.neighborSearchRadius_FD_Param.config(stat = 'normal')
             self.maximumNeighbors_FD_Param.config(state = 'normal')
             self.sensitiveFD_Param.config(stat = 'normal')
-            self.FT_forNthNberFrames_Param.config(stat = 'normal') 
-            self.FT_forNthNberFrames.set(20)              
+            self.FT_forNthNberFrames_Param.config(stat = 'normal')
+            self.FT_forNthNberFrames.set(20)
+            self.pointDistX_Param.config(state = 'disabled')
+            self.pointDistY_Param.config(state = 'disabled')
+            self.minimumTrackedFeatures_Param.config(stat = 'normal')
+            self.minimumTrackedFeatures.set(66)
             self.lspiv.set(False)                     
 
     def checkLK(self):
@@ -686,6 +718,13 @@ class FlowVeloTool:
             self.FD_everyIthFrame_Param.config(state='disabled')
             self.FT_forNthNberFrames_Param.config(state='disabled')
             self.TrackEveryNthFrame_Param.config(state='disabled')
+            self.initialLKBut.config(state='disabled')
+            self.lspivBut.config(state='disabled')
+            self.ptvBut.config(state='disabled')
+            self.lkBut.config(state='disabled')
+            self.nccBut.config(state='disabled')
+            self.pointDistX_Param.config(state = 'disabled')
+            self.pointDistY_Param.config(state = 'disabled')                   
         else:
             self.maxFtNbr_FD_Param.config(state='normal')
             self.minimumThreshBrightness_Param.config(state='normal')
@@ -705,6 +744,13 @@ class FlowVeloTool:
             self.FD_everyIthFrame_Param.config(state='normal')
             self.FT_forNthNberFrames_Param.config(state='normal')
             self.TrackEveryNthFrame_Param.config(state='normal')
+            self.initialLKBut.config(state='normal')
+            self.lspivBut.config(state='normal')
+            self.ptvBut.config(state='normal')
+            self.lkBut.config(state='normal')
+            self.nccBut.config(state='normal')
+            self.pointDistX_Param.config(state = 'normal')
+            self.pointDistY_Param.config(state = 'normal')                   
             
     def checkSearchArea(self):
         if self.importAoIextent.get() == True:
@@ -834,7 +880,9 @@ class FlowVeloTool:
                        'NCC ' + str(self.ncc.get()),
                        'initalEstimLK ' + str(self.initialLK.get()),
                        'LSPIV ' + str(self.lspiv.get()),
-                       'PTV ' + str(self.ptv.get())]
+                       'PTV ' + str(self.ptv.get()),
+                       'PIVpointDistX ' + str(self.pointDistX.get()),
+                       'PIVpointDistY ' + str(self.pointDistY.get())]
         
         listParams = pd.DataFrame(listParams)
         listParams.to_csv(self.directoryOutput.get() + 'parameterSettings.txt', index=False, header=None)
@@ -898,6 +946,8 @@ class FlowVeloTool:
         self.initialLK.set(listParams.iloc[45,1])
         self.lspiv.set(listParams.iloc[46,1])
         self.ptv.set(listParams.iloc[47,1])
+        self.pointDistX.set(listParams.iloc[48,1])
+        self.pointDistY.set(listParams.iloc[49,1])
 
         print('parameters loaded')
         self.printTxt('parameters loaded')
@@ -1006,6 +1056,8 @@ class FlowVeloTool:
         maximumNeighbors_FD = self.maximumNeighbors_FD.get()
         maxFtNbr_FD = self.maxFtNbr_FD.get()
         sensitiveFD = self.sensitiveFD.get()
+        pointDistX = self.pointDistX.get()
+        pointDistY = self.pointDistX.get()
 
         #parameters tracking
         threshLSM = 0.001  #for adjustment
@@ -1095,13 +1147,17 @@ class FlowVeloTool:
             imagesForGif = []
             trackedFeaturesOutput_undist = []
             first_loop = True
-    
+            
             if test_run and len(img_list) > 20:
                 lenLoop = 20
             elif len(img_list) > FT_forNthNberFrames+1:
                 lenLoop = len(img_list)-FT_forNthNberFrames-1
             else:
                 lenLoop = 1
+
+            if self.lspiv.get():
+                featuresToTrack, first_loop, feature_ID_max = ptv.FeatureDetectionLSPIV(dir_imgs, img_list, frameCount, pointDistX, pointDistY, searchMask, 
+                                                                                        FD_everyIthFrame, savePlotData, directoryOutput, first_loop, None)
                 
             while frameCount < lenLoop:
                 
@@ -1110,10 +1166,7 @@ class FlowVeloTool:
                     if first_loop:
                         feature_ID_max = None
                     
-                    if self.lspiv.get():
-                        featuresToTrack, first_loop, feature_ID_max = ptv.FeatureDetectionLSPIV(dir_imgs, img_list, frameCount, template_width, template_height, searchMask, 
-                                                                                                FD_everyIthFrame, savePlotData, directoryOutput, first_loop, feature_ID_max)
-                    else:
+                    if self.ptv.get():
                         featuresToTrack, first_loop, feature_ID_max = ptv.FeatureDetectionPTV(dir_imgs, img_list, frameCount, minimumThreshBrightness, neighborSearchRadius_FD,
                                                                                               searchMask, maximumNeighbors_FD, maxFtNbr_FD, sensitiveFD, savePlotData, directoryOutput,
                                                                                               FD_everyIthFrame, first_loop, feature_ID_max)
@@ -1152,14 +1205,14 @@ class FlowVeloTool:
                 print('failed reading feature file')
 
 
-        '''-------filter tracking results in image space-------'''
+        '''-------filter tracking results in image space-------'''        
         filteredFeatures, [nbr_features_raw, nbr_features_mindist, 
                            nbr_features_maxdist,minimumTrackedFeatures,steady_angle, 
                            nbr_features_steady,range_angle, nbr_features_rangeangle, 
                            flowdir_angle,nbr_features_mainflowdir] = ptv.FilterTracks(trackedFeaturesOutput_undist, dir_imgs, img_list, directoryOutput,
                                                                                       minDistance_px, maxDistance_px, minimumTrackedFeatures, 
                                                                                       threshAngleSteadiness, threshAngleRange,
-                                                                                      binNbrMainflowdirection, MainFlowAngleBuffer)
+                                                                                      binNbrMainflowdirection, MainFlowAngleBuffer, self.lspiv.get())
 
         print('filtering tracks done\n')
         print('------------------------------------------')
@@ -1169,7 +1222,8 @@ class FlowVeloTool:
 
         '''-------transform img measurements into object space-------'''
         ptv.TracksPx_to_TracksMetric(filteredFeatures, minimumTrackedFeatures, interior_orient, eor_mat, unit_gcp,
-                                     frame_rate_cam, TrackEveryNthFrame, waterlevel_pt, directoryOutput, dir_imgs, img_list)
+                                     frame_rate_cam, TrackEveryNthFrame, waterlevel_pt, directoryOutput, dir_imgs, 
+                                     img_list, veloStdThresh, self.lspiv.get())
         self.printTxt('------------------------------------------\n'
                       'finished transforming pixel values to velocities')
         

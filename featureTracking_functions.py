@@ -25,6 +25,7 @@
 import sys, math
 import numpy as np
 import pylab as plt
+import pandas as pd
 
 import cv2
 
@@ -489,12 +490,12 @@ def performFeatureTracking(template_size, search_area, initCooTemplate,
 
 
 def performFeatureTrackingLK(startImg, searchImg, featuresToSearch, useApprox=False, initialEstimateNewPos=None,
-                             searchArea_x=150, searchArea_y=150):
+                             searchArea_x=150, searchArea_y=150, maxDistBackForward_px=1):
 # use grey scale images    
     featuresToSearchFloat = np.asarray(featuresToSearch, dtype=np.float32)
     
     #parameters for lucas kanade optical flow
-    lk_params = dict(winSize  = (searchArea_x,searchArea_y), maxLevel=0, 
+    lk_params = dict(winSize  = (searchArea_x,searchArea_y), maxLevel=2, 
                      criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.003),  #15,15 2 0.03
                      flags = cv2.OPTFLOW_USE_INITIAL_FLOW)
 
@@ -502,11 +503,29 @@ def performFeatureTrackingLK(startImg, searchImg, featuresToSearch, useApprox=Fa
     if useApprox:
         #work with initial estimates, i.e. pre-set shift of search window
         initialEstimateNewPosFloat = np.asarray(initialEstimateNewPos, dtype=np.float32)
-        trackedFeatures, status, err = cv2.calcOpticalFlowPyrLK(startImg, searchImg, featuresToSearchFloat, initialEstimateNewPosFloat,
-                                                                None, **lk_params)
+        trackedFeatures, status, _ = cv2.calcOpticalFlowPyrLK(startImg, searchImg, featuresToSearchFloat, initialEstimateNewPosFloat,
+                                                              None, **lk_params)
+        #check backwards
+        initialEstimateNewPosFloatCheck = trackedFeatures + (featuresToSearchFloat - initialEstimateNewPosFloat)
+        trackedFeaturesCheck, _, _ = cv2.calcOpticalFlowPyrLK(searchImg, startImg, trackedFeatures, initialEstimateNewPosFloatCheck,
+                                                              None, **lk_params)        
     else:
         #...or not
-        trackedFeatures, status, err = cv2.calcOpticalFlowPyrLK(startImg, searchImg, featuresToSearchFloat, None, **lk_params) 
+        trackedFeatures, status, _ = cv2.calcOpticalFlowPyrLK(startImg, searchImg, featuresToSearchFloat, featuresToSearchFloat, 
+                                                              None, **lk_params)
+        
+        #check backwards
+        trackedFeaturesCheck, status, _ = cv2.calcOpticalFlowPyrLK(searchImg, startImg, trackedFeatures, trackedFeatures, 
+                                                                   None, **lk_params)         
+    
+    #set points that fail backward forward tracking test to nan
+    distBetweenBackForward = abs(featuresToSearch-trackedFeaturesCheck).reshape(-1, 2).max(-1)
+    keepGoodTracks = distBetweenBackForward < maxDistBackForward_px    
+    trackedFeaturesDF = pd.DataFrame(trackedFeatures, columns=['x','y'])
+    trackedFeaturesDF.loc[:,'check'] = keepGoodTracks
+    trackedFeaturesDF = trackedFeaturesDF.where(trackedFeaturesDF.check == True)
+    trackedFeaturesDF = trackedFeaturesDF.drop(['check'], axis=1)
+    trackedFeatures = np.asarray(trackedFeaturesDF)
     
     cv2.destroyAllWindows()
     
