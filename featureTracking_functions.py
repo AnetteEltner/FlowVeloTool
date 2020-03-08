@@ -490,12 +490,12 @@ def performFeatureTracking(template_size, search_area, initCooTemplate,
 
 
 def performFeatureTrackingLK(startImg, searchImg, featuresToSearch, useApprox=False, initialEstimateNewPos=None,
-                             searchArea_x=150, searchArea_y=150, maxDistBackForward_px=1):
-# use grey scale images    
+                             windowTemplate_x=150, windowTemplate_y=150, maxDistBackForward_px=1):
+    # use grey scale images    
     featuresToSearchFloat = np.asarray(featuresToSearch, dtype=np.float32)
     
     #parameters for lucas kanade optical flow
-    lk_params = dict(winSize  = (searchArea_x,searchArea_y), maxLevel=2, 
+    lk_params = dict(winSize  = (windowTemplate_x,windowTemplate_y), maxLevel=2, 
                      criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.003),  #15,15 2 0.03
                      flags = cv2.OPTFLOW_USE_INITIAL_FLOW)
 
@@ -511,11 +511,11 @@ def performFeatureTrackingLK(startImg, searchImg, featuresToSearch, useApprox=Fa
                                                               None, **lk_params)        
     else:
         #...or not
-        trackedFeatures, status, _ = cv2.calcOpticalFlowPyrLK(startImg, searchImg, featuresToSearchFloat, featuresToSearchFloat, 
+        trackedFeatures, status, _ = cv2.calcOpticalFlowPyrLK(startImg, searchImg, featuresToSearchFloat, 
                                                               None, **lk_params)
         
         #check backwards
-        trackedFeaturesCheck, status, _ = cv2.calcOpticalFlowPyrLK(searchImg, startImg, trackedFeatures, trackedFeatures, 
+        trackedFeaturesCheck, status, _ = cv2.calcOpticalFlowPyrLK(searchImg, startImg, trackedFeatures, 
                                                                    None, **lk_params)         
     
     #set points that fail backward forward tracking test to nan

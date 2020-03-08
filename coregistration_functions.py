@@ -153,17 +153,89 @@ def coregistration(image_list, directory_out, kp_nbr=None, sift_vers=False,
     writer = csv.writer(write_file, delimiter=",")
     writer.writerows(maskForBorderRegion_16UC1)
     write_file.close()
+
+
+def coregistrationListOut(image_list, kp_nbr=None, sift_vers=False, 
+                          feature_match_twosided=False, nbr_good_matches=10):
+  
+    img_master = image_list[1]
+
+    '''detect Harris keypoints in master image'''
+    keypoints_master, _ = HarrisCorners(img_master, kp_nbr, False, True)        
+    
+    '''calculate ORB or SIFT descriptors in master image'''
+    if not sift_vers:
+        keypoints_master, descriptor_master = OrbDescriptors(img_master, keypoints_master, True)
+        print('ORB descriptors calculated for master')
+    else: 
+        keypoints_master, descriptor_master = SiftDescriptors(img_master, keypoints_master, True)    
+        print('SIFT descriptors calculated for master')
+    
+    
+    '''border mask preparation (for temp texture)'''
+    maskForBorderRegion_16UC1 = np.ones((img_master.shape[0], img_master.shape[1]))
+    maskForBorderRegion_16UC1 = maskForBorderRegion_16UC1.astype(np.uint16)
+    
+    
+    '''perform co-registration for each image'''
+    i = 1
+    imgList = []
+    imgList.append(img_master)
+    while i < len(image_list):
+
+        slave_img = image_list[i] 
+
+        '''detect Harris keypoints in image to register'''
+        keypoints_image, _ = HarrisCorners(slave_img, kp_nbr, False, True)
+    
+        '''calculate ORB or SIFT descriptors in image to register'''
+        if not sift_vers:
+            keypoints_image, descriptor_image = OrbDescriptors(slave_img, keypoints_image, True)
+            print('ORB descriptors calculated for image ' + str(i))
+        else:
+            keypoints_image, descriptor_image = SiftDescriptors(slave_img, keypoints_image, True)
+            print('SIFT descriptors calculated for image ' + str(i))
+        
+        
+        '''match images to master using feature descriptors (SIFT)'''  
+        if not sift_vers:
+            matched_pts_master, matched_pts_img = match_DescriptorsBF(descriptor_master, descriptor_image, keypoints_master, keypoints_image,
+                                                                      True,feature_match_twosided)
+            matched_pts_master = np.asarray(matched_pts_master, dtype=np.float32)
+            matched_pts_img = np.asarray(matched_pts_img, dtype=np.float32)
+        else:
+            if feature_match_twosided:        
+                matched_pts_master, matched_pts_img = match_twosidedSift(descriptor_master, descriptor_image, keypoints_master, keypoints_image, "FLANN")    
+            else:
+                matchscores = SiftMatchFLANN(descriptor_master, descriptor_image)
+                matched_pts_master = np.float32([keypoints_master[m[0].queryIdx].pt for m in matchscores]).reshape(-1,2)
+                matched_pts_img = np.float32([keypoints_image[m[0].trainIdx].pt for m in matchscores]).reshape(-1,2)
+        
+        print('number of matches: ' + str(matched_pts_master.shape[0]))
+        
+        
+        '''calculate homography from matched image points and co-register images with estimated 3x3 transformation'''
+        if matched_pts_master.shape[0] > nbr_good_matches:
+            # Calculate Homography
+            H_matrix, _ = cv2.findHomography(matched_pts_img, matched_pts_master, cv2.RANSAC, 3)
+            
+            # Warp source image to destination based on homography
+            img_coregistered = cv2.warpPerspective(slave_img, H_matrix, (img_master.shape[1],img_master.shape[0]))      #cv2.PerspectiveTransform() for points only
+           
+            imgList.append(img_coregistered)
+                        
+        i = i + 1   
+    
+    return imgList
     
 
 #detect Harris corner features
-def HarrisCorners(image_file, kp_nbr=None, visualize=False, img_import=False):
+def HarrisCorners(image, kp_nbr=None, visualize=False, img_import=False):
     
-    if img_import:
-        image_gray = image_file
-    else:
-        image = cv2.imread(image_file)
-        image_gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-                                                         
+    if not img_import:
+        image_gray = cv2.imread(image)
+    
+    image_gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)                                                         
     image_gray = np.uint8(image_gray) 
     
     '''detect Harris corners'''
@@ -189,8 +261,9 @@ def HarrisCorners(image_file, kp_nbr=None, visualize=False, img_import=False):
 
 
 #calculate ORB descriptors at detected features (using various feature detectors)
-def OrbDescriptors(image_file, keypoints):
-    image = cv2.imread(image_file)
+def OrbDescriptors(image, keypoints, img_import=False):
+    if not img_import:
+        image = cv2.imread(image)
     image_gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)                                             
     image_gray = np.uint8(image_gray) 
     
@@ -205,8 +278,9 @@ def OrbDescriptors(image_file, keypoints):
 
 
 #calculate SIFT descriptors at detected features (using various feature detectors)
-def SiftDescriptors(image_file, keypoints):
-    image = cv2.imread(image_file)
+def SiftDescriptors(image, keypoints, img_import=False):
+    if not img_import:
+        image = cv2.imread(image)
     image_gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)                                             
     image_gray = np.uint8(image_gray) 
         

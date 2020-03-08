@@ -27,6 +27,9 @@
 import sys
 import numpy as np
 import pandas as pd
+import featureDetect_functions as detectF
+import scipy.spatial
+import draw_functions as drawF
 
 
 def TrackFilterMinCount(image_points, minCount):
@@ -206,3 +209,87 @@ def FilteredTracksGroupPerID(image_points):
                                       MeanVeloPerTrack, StdVeloPerTrack, DistancePerTrack], axis=1)
     
     return filteredTracksOutput
+
+
+def DefineRFeatures_forRasterbasedFilter(img, border_pts, cell_size):    
+    '''Clip image'''
+    grid = np.indices((img.shape[0], img.shape[1]))
+    img_id_x =  grid[1]
+    img_id_y =  grid[0]
+    
+    img_clipped_x = detectF.raster_clip(img_id_x, 0, border_pts, False, False, False)
+    img_clipped_y = detectF.raster_clip(img_id_y, 0, border_pts, False, False, False)
+    
+    '''define features'''
+    features_col = img_clipped_x[np.int(cell_size/2)::np.int(cell_size/2),np.int(cell_size/2)::np.int(cell_size/2)]
+    features_row = img_clipped_y[np.int(cell_size/2)::np.int(cell_size/2),np.int(cell_size/2)::np.int(cell_size/2)]
+    
+    features = np.hstack((features_col.reshape(features_col.shape[0]*features_col.shape[1],1),
+                          features_row.reshape(features_row.shape[0]*features_row.shape[1],1)))
+    
+    features = np.asarray(features, np.uint32)
+    
+    features = features[features[:,0]<img.shape[1]]
+    features = features[features[:,1]<img.shape[0]]
+    
+#     plotPts = drawF.drawPointsToImg(img,features)
+#     plotPts.show()
+    
+    return features
+
+    
+def NN_filter(velo_points, targeting_pts, max_NN_dist, img=None, dirOut=None, points3D=False):
+    
+    if points3D: 
+        target_pts = np.asarray(targeting_pts[['X','Y','Z']], dtype = np.float)
+        search_points = np.asarray(velo_points[['X','Y','Z']], dtype = np.float)
+    else:
+        target_pts = np.asarray(targeting_pts[['x','y']], dtype = np.float)
+        search_points = np.asarray(velo_points[['x','y']], dtype = np.float)       
+
+    #define kd-tree
+    velotree = scipy.spatial.cKDTree(search_points)
+    targettree = scipy.spatial.cKDTree(target_pts)
+    
+    #search for nearest neighbour
+    indexes = targettree.query_ball_tree(velotree, max_NN_dist)   #find points within specific distance (here in pixels)
+    
+    NN_diff = []
+    i = -1
+    for NNpts in indexes:
+        i = i + 1
+        if not NNpts:  #if no nearby point found, skip
+            continue        
+        
+        NNpts = np.asarray(NNpts, dtype=np.int)
+        velosPerTarget = velo_points.iloc[NNpts,:]
+        
+        velo_std = velosPerTarget.velo.std()
+        velo_median = velosPerTarget.velo.median()
+        dist_median = velosPerTarget.dist_metric.median()
+        velo_count = velosPerTarget.dist.count()
+        x_median = velosPerTarget.x.median()
+        y_median = velosPerTarget.y.median()
+        x_tr_median = velosPerTarget.x_tr.median()
+        y_tr_median = velosPerTarget.y_tr.median()        
+        
+#         if velo_count < 5:
+#             continue
+
+        xtr_cell = targeting_pts.x[i] + (x_tr_median-x_median)    
+        ytr_cell = targeting_pts.y[i] + (y_tr_median-y_median)       
+        NN_diff.append([targeting_pts.X[i], targeting_pts.Y[i], targeting_pts.Z[i],
+                        targeting_pts.id[i], targeting_pts.x[i],targeting_pts.y[i], xtr_cell, ytr_cell,                        
+                        dist_median,velo_median,velo_std,velo_count])             
+
+    NN_diff = pd.DataFrame(NN_diff)
+    NN_diff.columns = ['X','Y','Z','id','x','y','x_tr','y_tr','distMedian','velo','veloStd','count']
+#     plotPts = drawF.drawPointsToImg(img,search_points, True)
+#     plotPts.savefig(dirOut+'veloFilteredRaster.png')      
+#     plotPts = drawF.drawPointsToImg(img,np.asarray(NN_diff[['x','y']]), True)
+#     plotPts.savefig(dirOut+'pointsFilteredRaster.png')    
+        
+    return NN_diff
+                      
+                      
+                       

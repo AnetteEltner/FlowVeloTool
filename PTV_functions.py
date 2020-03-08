@@ -12,6 +12,7 @@ import featureFilter_functions as filterF
 import featureReference_functions as refF
 
 
+
 def EstimateExterior(gcpCoo_file, imgCoo_GCP_file, interior_orient, estimate_exterior,
                      unit_gcp, max_orientation_deviation, ransacApprox, angles_eor, pos_eor,
                      directoryOutput):
@@ -179,7 +180,7 @@ def FeatureTracking(template_width, template_height, search_area_x_CC, search_ar
         searchImg = cv2.imread(dir_imgs + img_list[img_nbr_tracking+TrackEveryNthFrame], 0)
         
         print('template image: ' + img_list[img_nbr_tracking] + ', search image: ' + 
-                      img_list[img_nbr_tracking+TrackEveryNthFrame] + '\n')
+              img_list[img_nbr_tracking+TrackEveryNthFrame] + '\n')
         
         #track features per image sequence        
         if lk:
@@ -199,7 +200,7 @@ def FeatureTracking(template_width, template_height, search_area_x_CC, search_ar
                 #perform tracking
                 trackedFeaturesLK, status = trackF.performFeatureTrackingLK(templateImg, searchImg, featuresToTrack[:,1:],
                                                                             initialEstimatesLK, featureEstimatesNextFrame,
-                                                                            search_area_x_CC, search_area_y_CC, maxDistBackForward_px)
+                                                                            template_width, template_height, maxDistBackForward_px)
                 
                 featuresId = featuresToTrack[:,0]
                 trackedFeaturesLKFiltered = np.hstack((featuresId.reshape(featuresId.shape[0],1), trackedFeaturesLK))
@@ -288,7 +289,7 @@ def FeatureTracking(template_width, template_height, search_area_x_CC, search_ar
     return trackedFeaturesOutput_undist, imagesForGif
 
 
-def FilterTracks(trackedFeaturesOutput_undist, dir_imgs, img_list, directoryOutput,
+def FilterTracks(trackedFeaturesOutput_undist, img_name, directoryOutput,
                  minDistance_px, maxDistance_px, minimumTrackedFeatures, 
                  threshAngleSteadiness, threshAngleRange,
                  binNbrMainflowdirection, MainFlowAngleBuffer, lspiv):
@@ -322,7 +323,7 @@ def FilterTracks(trackedFeaturesOutput_undist, dir_imgs, img_list, directoryOutp
                                'x_tr' : Features_px[:,3], 'y_tr' : Features_px[:,4], 'dist' : Features_px[:,5]})
     
     #draw all tracks from frame to frame into image
-    image = cv2.imread(dir_imgs + img_list[0], 0)
+    image = cv2.imread(img_name, 0)
     drawF.draw_tracks(Features_px, image, directoryOutput, 'TracksRaw_px.jpg', 'dist', False)   
     print('nbr features prior filtering: ' + str(np.unique(Features_px.id).shape[0]) + '\n')
     nbr_features_raw = np.unique(Features_px.id).shape[0]
@@ -394,12 +395,12 @@ def FilterTracks(trackedFeaturesOutput_undist, dir_imgs, img_list, directoryOutp
 
 
 def TracksPx_to_TracksMetric(filteredFeatures, minimumTrackedFeatures, interior_orient, eor_mat, unit_gcp,
-                             frame_rate_cam, TrackEveryNthFrame, waterlevel_pt, directoryOutput, dir_imgs, 
-                             img_list, veloStdThresh, lspiv):
+                             frame_rate_cam, TrackEveryNthFrame, waterlevel_pt, directoryOutput, img_name, 
+                             veloStdThresh, lspiv, cellsizeFilter, searchMask):
     #scale tracks in image space to tracks in object space to get flow velocity in m/s
     waterlevel = waterlevel_pt
 
-    image = cv2.imread(dir_imgs + img_list[0], 0)
+    image = cv2.imread(img_name, 0)
 
     if lspiv:
         xy_start_tr = np.asarray(filteredFeatures[['x','y']])
@@ -428,7 +429,7 @@ def TracksPx_to_TracksMetric(filteredFeatures, minimumTrackedFeatures, interior_
     else:
         frame_rate_cam = np.ones((filteredFeatures_count.shape[0],1), dtype=np.float) * np.float(frame_rate_cam)
         nbrTrackedFrames = TrackEveryNthFrame * (filteredFeatures_count+1)
-        trackingDuration = nbrTrackedFrames.reshape(frame_rate_cam.shape[0],1) / frame_rate_cam 
+        trackingDuration = nbrTrackedFrames.reshape(frame_rate_cam.shape[0],1) / frame_rate_cam
 
     #get velocity
     velo = dist_metric.reshape(trackingDuration.shape[0],1) / trackingDuration
@@ -437,9 +438,12 @@ def TracksPx_to_TracksMetric(filteredFeatures, minimumTrackedFeatures, interior_
         filteredFeaturesPIV = pd.DataFrame(id_features, columns=['id'])        
         filteredFeaturesPIV = filterFeatureOrganise(filteredFeaturesPIV, XY_start_tr, XY_tr, xy_tr, dist_metric, velo, 
                                                     False, None, filteredFeatures[['x','y']])
-        drawF.draw_tracks(filteredFeaturesPIV.groupby('id', as_index=False).mean(), image, directoryOutput, 'TracksReferenced_rawPIV.jpg', 'velo', True)
-        filteredFeaturesPIV.to_csv(directoryOutput + 'TracksReferenced_rawPIV.txt', sep='\t', index=False)
+        drawF.draw_tracks(filteredFeaturesPIV.groupby('id', as_index=False).mean(), image, directoryOutput, 'TracksReferenced_raw_PIV.jpg', 'velo', True)
+        filteredFeaturesPIV.to_csv(directoryOutput + 'TracksReferenced_raw_PIV.txt', sep='\t', index=False)
                
+        #write referenced tracking results to file
+        print('nbr of tracked features: ' + str(filteredFeatures.shape[0]) + '\n')
+        
         #filter outliers considering mean and std dev for each grid cell
         filteredFeaturesPIV.loc[:,'veloMean'] = pd.Series(np.empty((len(filteredFeaturesPIV))))        
         filteredFeaturesPIV.loc[:,'veloStd'] = pd.Series(np.empty((len(filteredFeaturesPIV))))
@@ -453,8 +457,8 @@ def TracksPx_to_TracksMetric(filteredFeatures, minimumTrackedFeatures, interior_
             filteredFeaturesPIV.loc[filteredFeaturesPIV.id == filteredFeaturesId.loc[featureCount], 'veloStd'] = filteredFeaturesStd.loc[featureCount,'velo']  
             featureCount = featureCount + 1
  
-        filteredFeaturesPIV.loc[:,'threshPos'] = filteredFeaturesPIV.veloMean + 5 * filteredFeaturesPIV.veloStd
-        filteredFeaturesPIV.loc[:,'threshNeg'] = filteredFeaturesPIV.veloMean - 5 * filteredFeaturesPIV.veloStd
+        filteredFeaturesPIV.loc[:,'threshPos'] = filteredFeaturesPIV.veloMean + veloStdThresh * filteredFeaturesPIV.veloStd
+        filteredFeaturesPIV.loc[:,'threshNeg'] = filteredFeaturesPIV.veloMean - veloStdThresh * filteredFeaturesPIV.veloStd
         filteredFeaturesPIV = filteredFeaturesPIV[filteredFeaturesPIV.velo < filteredFeaturesPIV.threshPos]
         filteredFeaturesPIV = filteredFeaturesPIV[filteredFeaturesPIV.velo > filteredFeaturesPIV.threshNeg]     
         
@@ -468,29 +472,66 @@ def TracksPx_to_TracksMetric(filteredFeatures, minimumTrackedFeatures, interior_
         
         filteredFeatures = filteredFeaturesPIV_grouped
         
+        drawF.draw_tracks(filteredFeatures, image, directoryOutput, 'TracksFiltered_PIV.jpg', 'velo', True)
+        filteredFeatures.to_csv(directoryOutput + 'TracksFiltered_PIV.txt', sep='\t', index=False)        
+        
     else:
         filteredFeatures_1st = filterFeatureOrganise(filteredFeatures_1st, XY_start_tr, XY_tr, xy_tr, dist_metric, velo, 
                                                      True, filteredFeatures_count)
         filteredFeatures = filteredFeatures_1st
 
-    #write referenced tracking results to file
-    print('nbr of tracked features: ' + str(filteredFeatures.shape[0]) + '\n')
-    filteredFeatures.to_csv(directoryOutput + 'TracksReferenced_raw.txt', sep='\t', index=False)
-    drawF.draw_tracks(filteredFeatures, image, directoryOutput, 'TracksReferenced_raw.jpg', 'velo', True)
+        filteredFeatures.to_csv(directoryOutput + 'TracksReferenced_raw_PTV.txt', sep='\t', index=False)
+        drawF.draw_tracks(filteredFeatures, image, directoryOutput, 'TracksReferenced_raw_PTV.jpg', 'velo', True)
+        
+        #write referenced tracking results to file
+        print('nbr of tracked features: ' + str(filteredFeatures.shape[0]) + '\n')        
+        
+        
+        ''''''        
+        if not cellsizeFilter == 0:
+            #filter outliers area-based with regular raster
+            xy_cell = filterF.DefineRFeatures_forRasterbasedFilter(image, searchMask, cellsizeFilter)
+            
+            XYZ_cell = refF.LinePlaneIntersect(xy_cell, waterlevel, interior_orient, eor_mat, unit_gcp) / unit_gcp    
+            XYZxy = np.hstack((XYZ_cell, xy_cell))
+            XYZxy = pd.DataFrame(XYZxy)
+            XYZxy.columns = ['X','Y','Z','x','y']
+            XYZxy['id'] = range(1, len(XYZxy) + 1)
+            filteredFeaturesRaster = filterF.NN_filter(filteredFeatures, XYZxy, cellsizeFilter, image, directoryOutput, False)           
 
-    #filter for outlier velocities
-    MeanVeloAll = filteredFeatures.velo.mean()
-    StdVeloAll = filteredFeatures.velo.std()
-    threshVelo_Pos = MeanVeloAll + veloStdThresh * StdVeloAll
-    threshVelo_Neg = MeanVeloAll - veloStdThresh * StdVeloAll
-
-    filteredFeatures = filteredFeatures[filteredFeatures.velo < threshVelo_Pos]
-    filteredFeatures = filteredFeatures[filteredFeatures.velo > threshVelo_Neg]
+#             filteredFeaturesRaster = filterF.NN_filter(filteredFeatures, xy_cell, cellsizeFilter, image, directoryOutput)
+#             XYZ_cell = refF.LinePlaneIntersect(np.asarray(filteredFeaturesRaster[['x','y']], dtype = np.float), waterlevel, interior_orient, eor_mat, unit_gcp) / unit_gcp    
+#             filteredFeaturesRaster['X'] =  XYZ_cell[:,0]
+#             filteredFeaturesRaster['Y'] =  XYZ_cell[:,1]  
+#             filteredFeaturesRaster['Z'] =  XYZ_cell[:,2]            
+#             XYZ_cell = pd.DataFrame(XYZ_cell)
+#             XYZ_cell.to_csv(directoryOutput + 'test2.txt', sep='\t', index=False)
+                   
+            filteredFeaturesRaster.to_csv(directoryOutput + 'tracksFiltered_rasterBased.txt', sep='\t', index=False)
+#             drawF.draw_tracks_raster(filteredFeaturesRaster, image, directoryOutput, 'filteredTracks_rasterBased.png', 'velo', 
+#                                      np.int(cellsizeFilter), 'surface flow velocity [m/s]')
+            drawF.draw_tracks(filteredFeaturesRaster, image, directoryOutput, 'filteredTracks_raster.png', 'velo', True)
+            
+            #filter outliers area-based 
+            filteredFeaturesLocally = filterF.NN_filter(filteredFeatures, filteredFeatures, cellsizeFilter, False)
+            filteredFeaturesLocally.to_csv(directoryOutput + 'tracksFiltered_locally.txt', sep='\t', index=False)
+            drawF.draw_tracks(filteredFeaturesLocally, image, directoryOutput, 'filteredTracks_locally.png', 'velo', True)
+         
+        else:
+            #filter for outlier velocities
+            MeanVeloAll = filteredFeatures.velo.mean()
+            StdVeloAll = filteredFeatures.velo.std()
+            threshVelo_Pos = MeanVeloAll + veloStdThresh * StdVeloAll
+            threshVelo_Neg = MeanVeloAll - veloStdThresh * StdVeloAll
+        
+            filteredFeatures = filteredFeatures[filteredFeatures.velo < threshVelo_Pos]
+            filteredFeatures = filteredFeatures[filteredFeatures.velo > threshVelo_Neg]
+            
+            filteredFeatures.to_csv(directoryOutput + 'TracksFiltered_PTV.txt', sep='\t', index=False)
+            drawF.draw_tracks(filteredFeatures, image, directoryOutput, 'TracksFiltere_PTV.jpg', 'velo', True)            
 
     #write filtered tracking results to file and draw final tracking results to image  
     print('nbr of final tracked features: ' + str(filteredFeatures.shape[0]) + '\n')
-    filteredFeatures.to_csv(directoryOutput + 'TracksFiltered.txt', sep='\t', index=False)
-    drawF.draw_tracks(filteredFeatures, image, directoryOutput, 'TracksFiltered.jpg', 'velo', True)
 
 
 def filterFeatureOrganise(organizeDataframe, XYZ, XtrYtr, xytr, distMetric, Velo, 

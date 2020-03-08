@@ -8,7 +8,7 @@ __license__ = 'MIT'
 __date__ = '03 May 2019'
 __version__ = '1.0'
 __status__ = "initial release"
-__url__ = "https://github.???"
+__url__ = "https://github.com/AnetteEltner/FlowVeloTool"
 
 
 """
@@ -77,9 +77,9 @@ class FlowVeloTool:
                                 
         
         '''----------------frame flow velocity-------------------'''
-        frame = Frame(note)  
+        frame = Frame(note)
         note.add(frame, text="flow velocity")
-        note.grid(row=0, column=0, ipadx=500, ipady=440)
+        note.grid(row=0, column=0, ipadx=500, ipady=460)
         
         self.xButton = 370
         self.xText = 250
@@ -165,6 +165,14 @@ class FlowVeloTool:
         #exterior estimate
         self.yAddText = self.yAddText + 40
         Label(frame, text="Exterior orientation", font=("Courier", 10)).place(x=10, y=self.yAddText)
+        
+        self.yAddText = self.yAddText + 20
+        self.stayImgSpace = tk.BooleanVar()
+        self.stayImgSpace.set(False)
+        self.stayImgSpaceBut = tk.Checkbutton(frame, text = "Stay in image space", font=("Helvetica", 10), 
+                                              variable=self.stayImgSpace, command = lambda:self.checkImgSpace())
+        self.stayImgSpaceBut.place(x=0, y=self.yAddText)           
+        
         self.yAddText = self.yAddText + 20
         self.estimate_exterior = tk.BooleanVar()
         self.estimate_exterior.set(True)
@@ -469,8 +477,14 @@ class FlowVeloTool:
         self.veloStdThresh_Param = Entry(frame, textvariable=self.veloStdThresh, font=("Helvetica", 10, 'italic'))
         self.veloStdThresh_Param.place(x=self.xText2 + 240, y=self.yAddText2, width=75, height=20)
         self.veloStdThresh.set(1.5)      
-         
   
+        self.yAddText2 = self.yAddText2 + 20 
+        Label(frame, text="setValue filter radius [pix]: ").place(x=self.xText2, y=self.yAddText2)
+        self.veloFilterSize = tk.DoubleVar()
+        self.veloFilterSize_Param = Entry(frame, textvariable=self.veloFilterSize, font=("Helvetica", 10, 'italic'))
+        self.veloFilterSize_Param.place(x=self.xText2 + 240, y=self.yAddText2, width=75, height=20)
+        self.veloFilterSize.set(0)     
+
         #referencing
         self.yAddText = self.yAddText2 + 40
         Label(frame, text="Scaling", font=("Courier", 10)).place(x=10, y=self.yAddText)
@@ -579,6 +593,29 @@ class FlowVeloTool:
         self.coregisteracc.place(x=10, y=self.yAddText) 
 
 
+    def checkImgSpace(self):
+        if self.stayImgSpace.get() == True:
+            self.pos_eor_Str_Param.config(state = 'disabled')
+            self.angles_eor_Str_Param.config(state = 'disabled')
+            self.ransacApproxBut.config(stat = 'disabled')
+            self.estimate_exteriorBut.config(stat = 'disabled')
+            self.unit_gcp_Param.config(stat = 'disabled')
+            self.importAoIextentBut.config(state = 'normal')
+            self.ptCloud_file_Param.config(state = 'disabled')
+            self.waterlevel_buffer_Param.config(state = 'disabled')
+            self.waterlevel_pt_Param.config(state = 'disabled')
+            self.AoI_file_Param.config(state = 'normal')
+            self.gcpCoo_file_Param.config(state = 'disabled')
+            self.imgCoo_GCP_file_Param.config(state = 'disabled')
+        else:
+            self.checkExterior()
+            self.estimate_exteriorBut.config(stat = 'normal')
+            self.unit_gcp_Param.config(stat = 'normal')
+            self.checkSearchArea()
+            self.waterlevel_pt_Param.config(state = 'normal')
+            self.gcpCoo_file_Param.config(state = 'normal')
+            self.imgCoo_GCP_file_Param.config(state = 'normal')          
+    
     def checkExterior(self):
         if self.estimate_exterior.get() == True:
             self.pos_eor_Str_Param.config(state = 'disabled')
@@ -657,26 +694,30 @@ class FlowVeloTool:
             self.subpixelBut.config(state='normal')
             self.performLSMBut.config(state='normal')
             self.initialLKBut.config(state='disabled')
-#            self.search_area_y_CC_Param.config(state='normal')
-#            self.search_area_x_CC_Param.config(state='normal')
+            self.search_area_y_CC_Param.config(state='normal')
+            self.search_area_x_CC_Param.config(state='normal')
             self.shiftSearchFromCenter_x_Param.config(state = 'normal')  
             self.shiftSearchFromCenter_y_Param.config(state = 'normal')             
-        else:
+        
+        elif self.lk.get() == True and self.initialLK.get() == True:
             self.ncc.set(False)
             self.subpixelBut.config(state='disabled')
             self.performLSMBut.config(state='disabled')
             self.initialLKBut.config(state='normal')
-#            self.search_area_y_CC_Param.config(state='disabled')
-#            self.search_area_x_CC_Param.config(state='disabled') 
-            self.shiftSearchFromCenter_x_Param.config(state = 'disabled')  
-            self.shiftSearchFromCenter_y_Param.config(state = 'disabled') 
-            
-        if self.initialLK.get() == True:
+            self.search_area_y_CC_Param.config(state='disabled')
+            self.search_area_x_CC_Param.config(state='disabled') 
             self.shiftSearchFromCenter_x_Param.config(state = 'normal')  
-            self.shiftSearchFromCenter_y_Param.config(state = 'normal')
-        else:
+            self.shiftSearchFromCenter_y_Param.config(state = 'normal') 
+            
+        elif self.lk.get() == True and self.initialLK.get() == False:
+            self.ncc.set(False)
+            self.subpixelBut.config(state='disabled')
+            self.performLSMBut.config(state='disabled')
+            self.initialLKBut.config(state='normal')
+            self.search_area_y_CC_Param.config(state='disabled')
+            self.search_area_x_CC_Param.config(state='disabled') 
             self.shiftSearchFromCenter_x_Param.config(state = 'disabled')  
-            self.shiftSearchFromCenter_y_Param.config(state = 'disabled')          
+            self.shiftSearchFromCenter_y_Param.config(state = 'disabled')        
             
     def checkNCC(self):
         if self.ncc.get() == False:
@@ -697,6 +738,16 @@ class FlowVeloTool:
             self.search_area_x_CC_Param.config(state='normal')
             self.shiftSearchFromCenter_x_Param.config(state = 'normal')  
             self.shiftSearchFromCenter_y_Param.config(state = 'normal')                         
+                    
+    def checkSearchArea(self):
+        if self.importAoIextent.get() == True:
+            self.AoI_file_Param.config(state = 'normal')
+            self.ptCloud_file_Param.config(state = 'disabled')
+            self.waterlevel_buffer_Param.config(state = 'disabled')   
+        else:
+            self.AoI_file_Param.config(state = 'disabled')
+            self.ptCloud_file_Param.config(state = 'normal')
+            self.waterlevel_buffer_Param.config(state = 'normal')    
             
     def checkFilter(self):
         if self.filterOnly.get() == True:
@@ -726,41 +777,24 @@ class FlowVeloTool:
             self.pointDistX_Param.config(state = 'disabled')
             self.pointDistY_Param.config(state = 'disabled')                   
         else:
-            self.maxFtNbr_FD_Param.config(state='normal')
-            self.minimumThreshBrightness_Param.config(state='normal')
-            self.neighborSearchRadius_FD_Param.config(state='normal')
-            self.sensitiveFD_Param.config(state='normal')
-            self.maximumNeighbors_FD_Param.config(state='normal')
+            self.checkNCC()
+            self.checkImgSpace()
+            self.checkExterior()
+            self.checkLK()
+            self.checkLSPIV()
+            self.checkPTV()
+            self.checkSearchArea()            
             self.template_width_Param.config(state='normal')
             self.template_height_Param.config(state='normal')
-            self.search_area_x_CC_Param.config(state='normal')
-            self.search_area_y_CC_Param.config(state='normal')
-            self.shiftSearchFromCenter_x_Param.config(state='normal')
-            self.shiftSearchFromCenter_y_Param.config(state='normal')
-            self.subpixelBut.config(state='normal')
-            self.performLSMBut.config(state='normal')
             self.savePlotDataBut.config(state='normal')
             self.saveGifBut.config(state='normal')
             self.FD_everyIthFrame_Param.config(state='normal')
-            self.FT_forNthNberFrames_Param.config(state='normal')
             self.TrackEveryNthFrame_Param.config(state='normal')
-            self.initialLKBut.config(state='normal')
             self.lspivBut.config(state='normal')
             self.ptvBut.config(state='normal')
             self.lkBut.config(state='normal')
             self.nccBut.config(state='normal')
-            self.pointDistX_Param.config(state = 'normal')
-            self.pointDistY_Param.config(state = 'normal')                   
-            
-    def checkSearchArea(self):
-        if self.importAoIextent.get() == True:
-            self.AoI_file_Param.config(state = 'normal')
-            self.ptCloud_file_Param.config(state = 'disabled')
-            self.waterlevel_buffer_Param.config(state = 'disabled')   
-        else:
-            self.AoI_file_Param.config(state = 'disabled')
-            self.ptCloud_file_Param.config(state = 'normal')
-            self.waterlevel_buffer_Param.config(state = 'normal')       
+                     
         
 
     '''functions to load input data'''
@@ -882,7 +916,8 @@ class FlowVeloTool:
                        'LSPIV ' + str(self.lspiv.get()),
                        'PTV ' + str(self.ptv.get()),
                        'PIVpointDistX ' + str(self.pointDistX.get()),
-                       'PIVpointDistY ' + str(self.pointDistY.get())]
+                       'PIVpointDistY ' + str(self.pointDistY.get()),
+                       'stayImgSpace ' + str(self.stayImgSpace.get())]
         
         listParams = pd.DataFrame(listParams)
         listParams.to_csv(self.directoryOutput.get() + 'parameterSettings.txt', index=False, header=None)
@@ -948,6 +983,7 @@ class FlowVeloTool:
         self.ptv.set(listParams.iloc[47,1])
         self.pointDistX.set(listParams.iloc[48,1])
         self.pointDistY.set(listParams.iloc[49,1])
+        self.stayImgSpace.set(listParams.iloc[50,1])
 
         print('parameters loaded')
         self.printTxt('parameters loaded')
@@ -1025,30 +1061,27 @@ class FlowVeloTool:
         '''-------set parameters-------'''
         test_run = self.test_run.get()
         
-        #parameters exterior orientation estimation
-        estimate_exterior = self.estimate_exterior.get()
-        if (estimate_exterior == False) or (estimate_exterior == True and self.ransacApprox.get() == False):
-            angles_eor_Str = self.angles_eor_Str.get()
-            angles_eor = angles_eor_Str.split(',')
-            angles_eor = np.asarray([float(x) for x in angles_eor]).reshape(3,1) 
+        if not self.stayImgSpace.get():
+            #parameters exterior orientation estimation
+            estimate_exterior = self.estimate_exterior.get()
+            if (estimate_exterior == False) or (estimate_exterior == True and self.ransacApprox.get() == False):
+                angles_eor_Str = self.angles_eor_Str.get()
+                angles_eor = angles_eor_Str.split(',')
+                angles_eor = np.asarray([float(x) for x in angles_eor]).reshape(3,1) 
+                
+                pos_eor_Str = self.pos_eor_Str.get()
+                pos_eor = pos_eor_Str.split(',')
+                pos_eor = np.asarray([float(x) for x in pos_eor]).reshape(3,1)
+    
+                self.ransacApprox.set(False)
+    
+            else:
+                angles_eor = np.zeros((3,1))
+                pos_eor = np.zeros((3,1))       
             
-            pos_eor_Str = self.pos_eor_Str.get()
-            pos_eor = pos_eor_Str.split(',')
-            pos_eor = np.asarray([float(x) for x in pos_eor]).reshape(3,1)
-
-            self.ransacApprox.set(False)
-
-        else:
-            angles_eor = np.zeros((3,1))
-            pos_eor = np.zeros((3,1))       
-        
-        unit_gcp = self.unit_gcp.get()
-        max_orientation_deviation = 1
-        ransacApprox = self.ransacApprox.get()
-
-        #parameters search area definition
-        waterlevel_pt = self.waterlevel_pt.get()  #float
-        waterlevel_buffer = self.waterlevel_buffer.get()
+            unit_gcp = self.unit_gcp.get()
+            max_orientation_deviation = 1
+            ransacApprox = self.ransacApprox.get()
 
         #parameters feature detection
         minimumThreshBrightness = self.minimumThreshBrightness.get()
@@ -1093,29 +1126,50 @@ class FlowVeloTool:
         minimumTrackedFeatures = self.minimumTrackedFeatures.get()
         minimumTrackedFeatures = np.int(FT_forNthNberFrames*(minimumTrackedFeatures/100)/TrackEveryNthFrame)
 
+
+        '''-------read data and prepare for following processing-------'''        
         #read parameters from directories
         directoryOutput = self.directoryOutput.get()
         dir_imgs = self.dir_imgs.get()
         img_name = self.img_name.get()
-        gcpCoo_file = self.gcpCoo_file.get()
-        imgCoo_GCP_file = self.imgCoo_GCP_file.get()
         ior_file = self.ior_file.get()
-        if not self.importAoIextent.get():
-            ptCloud_file = self.ptCloud_file.get()
-        AoI_file = self.AoI_file.get()
+        
+        if not self.stayImgSpace.get():
+            gcpCoo_file = self.gcpCoo_file.get()
+            imgCoo_GCP_file = self.imgCoo_GCP_file.get()
+            waterlevel_pt = self.waterlevel_pt.get()  #float
+            waterlevel_buffer = self.waterlevel_buffer.get()            
+
+            #parameters search area definition                            
+            if not self.importAoIextent.get():
+                ptCloud_file = self.ptCloud_file.get()
+
+                AoI_file = None
                 
-        '''-------read data and prepare for following processing-------'''                    
+                try:
+                    ptCloud = np.asarray(pd.read_table(ptCloud_file, header=None, delimiter=',')) #read point cloud
+                except:
+                    print('failed reading point cloud file')
+                
+            else:
+                ptCloud = []
+                AoI_file = self.AoI_file.get()
+
+        else:
+            self.importAoIextent.set(True)
+            gcpCoo_file = None
+            imgCoo_GCP_file = None
+            unit_gcp = None
+            ptCloud = []
+            waterlevel_pt = np.nan
+            waterlevel_buffer = np.nan              
+            AoI_file = self.AoI_file.get()
+
         try:
             interior_orient = photogrF.read_aicon_ior(ior_file) #read interior orientation from file (aicon)   
         except:
-            print('failed reading interior orientation file')
-        if not self.importAoIextent.get():
-            try:
-                ptCloud = np.asarray(pd.read_table(ptCloud_file, header=None, delimiter=',')) #read point cloud
-            except:
-                print('failed reading point cloud file')
-        else: 
-            ptCloud = []
+            print('failed reading interior orientation file')        
+
         try:
             img_list = ioF.read_imgs_folder(dir_imgs) #read image names in folder
         except:
@@ -1132,9 +1186,12 @@ class FlowVeloTool:
                 
                 
         '''-------get exterior camera geometry-------'''
-        eor_mat = ptv.EstimateExterior(gcpCoo_file, imgCoo_GCP_file, interior_orient, estimate_exterior,
-                                       unit_gcp, max_orientation_deviation, ransacApprox, angles_eor, pos_eor,
-                                       directoryOutput)
+        if not self.stayImgSpace.get():
+            eor_mat = ptv.EstimateExterior(gcpCoo_file, imgCoo_GCP_file, interior_orient, estimate_exterior,
+                                           unit_gcp, max_orientation_deviation, ransacApprox, angles_eor, pos_eor,
+                                           directoryOutput)
+        else:
+            eor_mat = None
 
         '''define search area for features'''
         searchMask = ptv.searchMask(waterlevel_pt, waterlevel_buffer, AoI_file, ptCloud, unit_gcp, interior_orient,
@@ -1209,7 +1266,7 @@ class FlowVeloTool:
         filteredFeatures, [nbr_features_raw, nbr_features_mindist, 
                            nbr_features_maxdist,minimumTrackedFeatures,steady_angle, 
                            nbr_features_steady,range_angle, nbr_features_rangeangle, 
-                           flowdir_angle,nbr_features_mainflowdir] = ptv.FilterTracks(trackedFeaturesOutput_undist, dir_imgs, img_list, directoryOutput,
+                           flowdir_angle,nbr_features_mainflowdir] = ptv.FilterTracks(trackedFeaturesOutput_undist, img_name, directoryOutput,
                                                                                       minDistance_px, maxDistance_px, minimumTrackedFeatures, 
                                                                                       threshAngleSteadiness, threshAngleRange,
                                                                                       binNbrMainflowdirection, MainFlowAngleBuffer, self.lspiv.get())
@@ -1221,34 +1278,87 @@ class FlowVeloTool:
 
 
         '''-------transform img measurements into object space-------'''
-        ptv.TracksPx_to_TracksMetric(filteredFeatures, minimumTrackedFeatures, interior_orient, eor_mat, unit_gcp,
-                                     frame_rate_cam, TrackEveryNthFrame, waterlevel_pt, directoryOutput, dir_imgs, 
-                                     img_list, veloStdThresh, self.lspiv.get())
-        self.printTxt('------------------------------------------\n'
-                      'finished transforming pixel values to velocities')
+        if not self.stayImgSpace.get():
+            ptv.TracksPx_to_TracksMetric(filteredFeatures, minimumTrackedFeatures, interior_orient, eor_mat, unit_gcp,
+                                         frame_rate_cam, TrackEveryNthFrame, waterlevel_pt, directoryOutput, img_name, 
+                                         veloStdThresh, self.lspiv.get(), self.veloFilterSize.get(), searchMask)
+            self.printTxt('------------------------------------------\n'
+                          'finished transforming pixel values to velocities')
         
         
         '''-------logfile-------'''
-        log_file_wirter, logfile = ioF.logfile_writer(directoryOutput + 'logfile.txt')
-        log_file_wirter.writerow([['test run: ', test_run],['exterior angles: ', angles_eor],['exterior position: ', pos_eor],
-                                 ['unit_gcp: ', unit_gcp],['use ransacApprox: ', ransacApprox],
-                                 ['waterlevel: ',waterlevel_pt],['waterlevel_buffer: ',waterlevel_buffer],
-                                 ['minimumThreshBrightness: ',minimumThreshBrightness],['neighborSearchRadius_FD: ',neighborSearchRadius_FD],
-                                 ['maximumNeighbors_FD :',maximumNeighbors_FD],['maxFtNbr_FD :',maxFtNbr_FD],['sensitiveFD: ',sensitiveFD],
-                                 ['template_width: ',template_width],['template_height: ',template_height],['search_area_x_CC: ',search_area_x_CC],['search_area_y_CC: ',search_area_y_CC], 
-                                 ['shiftSearchFromCenter_x: ',shiftSearchFromCenter_x],['shiftSearchFromCenter_y: ',shiftSearchFromCenter_y],
-                                 ['subpixel: ',subpixel],['performLSM: ',performLSM],['FD_everyIthFrame: ',FD_everyIthFrame],['FT_forNthNberFrames: ',FT_forNthNberFrames],
-                                 ['TrackEveryNthFrame: ',TrackEveryNthFrame],['frame_rate_cam: ',frame_rate_cam],
-                                 ['minDistance_px: ',minDistance_px],['nbr features min dist: ',nbr_features_mindist],
-                                 ['maxDistance_px: ',maxDistance_px],['nbr features max dist: ',nbr_features_maxdist],
-                                 ['minimumTrackedFeatures: ',minimumTrackedFeatures],
-                                 ['threshAngleSteadiness: ',threshAngleSteadiness],['nbr features steadyness: ', nbr_features_steady],['average angle steadiness: ', steady_angle],
-                                 ['threshAngleRange: ',threshAngleRange],['nbr features angle range: ',nbr_features_rangeangle],['average range angle: ', range_angle],
-                                 ['binNbrMainflowdirection: ',binNbrMainflowdirection],['MainFlowAngleBuffer: ',MainFlowAngleBuffer],
-                                 ['nbr features main flow direction: ', nbr_features_mainflowdir],['median angle flow direction: ', flowdir_angle],
-                                 ['veloStdThresh: ',veloStdThresh],['nbr filtered features: ', filteredFeatures.shape[0]],['nbr raw features: ',nbr_features_raw]])
-        logfile.flush()
-        logfile.close()
+        if self.filterOnly.get() == False and self.stayImgSpace.get() == False:
+            log_file_writer, logfile = ioF.logfile_writer(directoryOutput + 'logfile.txt')
+            log_file_writer.writerow([['test run: ', test_run],['exterior angles: ', angles_eor],['exterior position: ', pos_eor],
+                                     ['unit_gcp: ', unit_gcp],['use ransacApprox: ', ransacApprox],
+                                     ['waterlevel: ',waterlevel_pt],['waterlevel_buffer: ',waterlevel_buffer],
+                                     ['minimumThreshBrightness: ',minimumThreshBrightness],['neighborSearchRadius_FD: ',neighborSearchRadius_FD],
+                                     ['maximumNeighbors_FD :',maximumNeighbors_FD],['maxFtNbr_FD :',maxFtNbr_FD],['sensitiveFD: ',sensitiveFD],
+                                     ['template_width: ',template_width],['template_height: ',template_height],['search_area_x_CC: ',search_area_x_CC],['search_area_y_CC: ',search_area_y_CC], 
+                                     ['shiftSearchFromCenter_x: ',shiftSearchFromCenter_x],['shiftSearchFromCenter_y: ',shiftSearchFromCenter_y],
+                                     ['subpixel: ',subpixel],['performLSM: ',performLSM],['FD_everyIthFrame: ',FD_everyIthFrame],['FT_forNthNberFrames: ',FT_forNthNberFrames],
+                                     ['TrackEveryNthFrame: ',TrackEveryNthFrame],['frame_rate_cam: ',frame_rate_cam],
+                                     ['minDistance_px: ',minDistance_px],['nbr features min dist: ',nbr_features_mindist],
+                                     ['maxDistance_px: ',maxDistance_px],['nbr features max dist: ',nbr_features_maxdist],
+                                     ['minimumTrackedFeatures: ',minimumTrackedFeatures],
+                                     ['threshAngleSteadiness: ',threshAngleSteadiness],['nbr features steadyness: ', nbr_features_steady],['average angle steadiness: ', steady_angle],
+                                     ['threshAngleRange: ',threshAngleRange],['nbr features angle range: ',nbr_features_rangeangle],['average range angle: ', range_angle],
+                                     ['binNbrMainflowdirection: ',binNbrMainflowdirection],['MainFlowAngleBuffer: ',MainFlowAngleBuffer],
+                                     ['nbr features main flow direction: ', nbr_features_mainflowdir],['median angle flow direction: ', flowdir_angle],
+                                     ['veloStdThresh: ',veloStdThresh],['nbr filtered features: ', filteredFeatures.shape[0]],['nbr raw features: ',nbr_features_raw]])
+            logfile.flush()
+            logfile.close()
+        
+        elif self.filterOnly.get() == True and self.stayImgSpace.get() == True:
+            log_file_writer, logfile = ioF.logfile_writer(directoryOutput + 'logfileFilterImgspace.txt')
+            log_file_writer.writerow([['frame_rate_cam: ',frame_rate_cam],
+                                     ['minDistance_px: ',minDistance_px],['nbr features min dist: ',nbr_features_mindist],
+                                     ['maxDistance_px: ',maxDistance_px],['nbr features max dist: ',nbr_features_maxdist],
+                                     ['minimumTrackedFeatures: ',minimumTrackedFeatures],
+                                     ['threshAngleSteadiness: ',threshAngleSteadiness],['nbr features steadyness: ', nbr_features_steady],['average angle steadiness: ', steady_angle],
+                                     ['threshAngleRange: ',threshAngleRange],['nbr features angle range: ',nbr_features_rangeangle],['average range angle: ', range_angle],
+                                     ['binNbrMainflowdirection: ',binNbrMainflowdirection],['MainFlowAngleBuffer: ',MainFlowAngleBuffer],
+                                     ['nbr features main flow direction: ', nbr_features_mainflowdir],['median angle flow direction: ', flowdir_angle],
+                                     ['nbr filtered features: ', filteredFeatures.shape[0]],['nbr raw features: ',nbr_features_raw]])
+            logfile.flush()
+            logfile.close()    
+
+        elif self.filterOnly.get() == True and self.stayImgSpace.get() == False:
+            log_file_writer, logfile = ioF.logfile_writer(directoryOutput + 'logfileFilter.txt')
+            log_file_writer.writerow([['exterior angles: ', angles_eor],['exterior position: ', pos_eor],
+                                     ['unit_gcp: ', unit_gcp],['use ransacApprox: ', ransacApprox],
+                                     ['waterlevel: ',waterlevel_pt],['waterlevel_buffer: ',waterlevel_buffer],
+                                     ['frame_rate_cam: ',frame_rate_cam],
+                                     ['minDistance_px: ',minDistance_px],['nbr features min dist: ',nbr_features_mindist],
+                                     ['maxDistance_px: ',maxDistance_px],['nbr features max dist: ',nbr_features_maxdist],
+                                     ['minimumTrackedFeatures: ',minimumTrackedFeatures],
+                                     ['threshAngleSteadiness: ',threshAngleSteadiness],['nbr features steadyness: ', nbr_features_steady],['average angle steadiness: ', steady_angle],
+                                     ['threshAngleRange: ',threshAngleRange],['nbr features angle range: ',nbr_features_rangeangle],['average range angle: ', range_angle],
+                                     ['binNbrMainflowdirection: ',binNbrMainflowdirection],['MainFlowAngleBuffer: ',MainFlowAngleBuffer],
+                                     ['nbr features main flow direction: ', nbr_features_mainflowdir],['median angle flow direction: ', flowdir_angle],
+                                     ['veloStdThresh: ',veloStdThresh],['nbr filtered features: ', filteredFeatures.shape[0]],['nbr raw features: ',nbr_features_raw]])
+            logfile.flush()
+            logfile.close()
+            
+        if self.filterOnly.get() == False and self.stayImgSpace.get() == True:
+            log_file_writer, logfile = ioF.logfile_writer(directoryOutput + 'logfileImgSpace.txt')
+            log_file_writer.writerow([['test run: ', test_run],
+                                     ['minimumThreshBrightness: ',minimumThreshBrightness],['neighborSearchRadius_FD: ',neighborSearchRadius_FD],
+                                     ['maximumNeighbors_FD :',maximumNeighbors_FD],['maxFtNbr_FD :',maxFtNbr_FD],['sensitiveFD: ',sensitiveFD],
+                                     ['template_width: ',template_width],['template_height: ',template_height],['search_area_x_CC: ',search_area_x_CC],['search_area_y_CC: ',search_area_y_CC], 
+                                     ['shiftSearchFromCenter_x: ',shiftSearchFromCenter_x],['shiftSearchFromCenter_y: ',shiftSearchFromCenter_y],
+                                     ['subpixel: ',subpixel],['performLSM: ',performLSM],['FD_everyIthFrame: ',FD_everyIthFrame],['FT_forNthNberFrames: ',FT_forNthNberFrames],
+                                     ['TrackEveryNthFrame: ',TrackEveryNthFrame],['frame_rate_cam: ',frame_rate_cam],
+                                     ['minDistance_px: ',minDistance_px],['nbr features min dist: ',nbr_features_mindist],
+                                     ['maxDistance_px: ',maxDistance_px],['nbr features max dist: ',nbr_features_maxdist],
+                                     ['minimumTrackedFeatures: ',minimumTrackedFeatures],
+                                     ['threshAngleSteadiness: ',threshAngleSteadiness],['nbr features steadyness: ', nbr_features_steady],['average angle steadiness: ', steady_angle],
+                                     ['threshAngleRange: ',threshAngleRange],['nbr features angle range: ',nbr_features_rangeangle],['average range angle: ', range_angle],
+                                     ['binNbrMainflowdirection: ',binNbrMainflowdirection],['MainFlowAngleBuffer: ',MainFlowAngleBuffer],
+                                     ['nbr features main flow direction: ', nbr_features_mainflowdir],['median angle flow direction: ', flowdir_angle],
+                                     ['nbr filtered features: ', filteredFeatures.shape[0]],['nbr raw features: ',nbr_features_raw]])
+            logfile.flush()
+            logfile.close()
 
 
         print('finished\n')

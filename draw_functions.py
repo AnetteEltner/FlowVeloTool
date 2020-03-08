@@ -423,19 +423,35 @@ def NN_pts(ref_pts, target_pts, max_NN_dist):
     return np.asarray(NN_to_crosssec)
 
 
-def NN_difference(ref_pts, target_pts, max_NN_dist):
+def NN_difference(ref_pts, target_pts, max_NN_dist, singlePoint=True):
 #input ref_pts, target_pts ... array
     
-    reference_pts_xy_int = np.asarray(ref_pts[:,0:2], dtype = np.int)
-    target_pts_int = np.asarray(target_pts[:,0:2], dtype = np.int)
+    reference_pts_xy = np.asarray(ref_pts[:,0:2], dtype = np.float)
+    target_pts_xy = np.asarray(target_pts[:,0:2], dtype = np.float)
     
-    points_list = list(target_pts_int)
+    points_list = list(target_pts_xy)
 
     #define kd-tree
-    mytree = scipy.spatial.cKDTree(reference_pts_xy_int)
+    mytree = scipy.spatial.cKDTree(reference_pts_xy)
     
     #search for nearest neighbour
-    indexes = mytree.query_ball_point(points_list, max_NN_dist)   #find points within specific distance (here in pixels)
+    if singlePoint:    
+        dist, indexes = mytree.query(points_list)
+        
+        distFilteredTargets = np.asarray([dist, indexes]).T
+        distFilteredTargets = np.hstack((distFilteredTargets, target_pts))
+        distFilteredTargets = distFilteredTargets[distFilteredTargets[:,0]<max_NN_dist]
+        
+        distFilteredTargets = pd.DataFrame(distFilteredTargets)
+        distFilteredTargets.columns = ['dist','index','x','y','velo']
+        distFilteredShortestToTarget = distFilteredTargets.iloc[distFilteredTargets.groupby('index')['dist'].idxmin(), :]
+        distFilteredShortestToTarget = np.asarray(distFilteredShortestToTarget)
+        
+        indexes = distFilteredShortestToTarget[:,1]
+        distFilteredShortestToTarget = distFilteredShortestToTarget[:,2:]
+        
+    else:
+        indexes = mytree.query_ball_point(points_list, max_NN_dist)   #find points within specific distance (here in pixels)
 
     NN_diff = []
     i = -1
@@ -444,18 +460,23 @@ def NN_difference(ref_pts, target_pts, max_NN_dist):
         if not NNpts:  #if no nearby point found, skip
             continue        
         
-        velo_ref = ref_pts[NNpts,2]
-        velo_target = np.ones((velo_ref.shape[0])) * target_pts[i,2]       
+        velo_ref = ref_pts[np.int(NNpts),2]
         
-        velo_diff = velo_ref - velo_target
-        velo_diff_std = np.nanstd(velo_diff)
-        velo_diff_median = np.nanmedian(velo_diff)
-        velo_diff_mean = np.nanmean(velo_diff)
-        velo_diff_count_bool = np.isnan(velo_diff)
-        velo_diff_count = np.count_nonzero(velo_diff)
-        
-        NN_diff.append([target_pts[i,0],target_pts[i,1],target_pts[i,2],
-                        velo_diff_median,velo_diff_mean,velo_diff_std,velo_diff_count])
+        if singlePoint:
+            NN_diff.append([ref_pts[np.int(NNpts),0],ref_pts[np.int(NNpts),1],
+                            velo_ref,distFilteredShortestToTarget[i,2]])
+        else:
+            velo_target = np.ones((velo_ref.shape[0])) * target_pts[i,2]       
+            
+            velo_diff = velo_ref - velo_target
+            velo_diff_std = np.nanstd(velo_diff)
+            velo_diff_median = np.nanmedian(velo_diff)
+            velo_diff_mean = np.nanmean(velo_diff)
+            velo_diff_count_bool = np.isnan(velo_diff)
+            velo_diff_count = np.count_nonzero(velo_diff)
+            
+            NN_diff.append([target_pts[i,0],target_pts[i,1],target_pts[i,2],
+                            velo_diff_median,velo_diff_mean,velo_diff_std,velo_diff_count])
         
     return np.asarray(NN_diff)
 

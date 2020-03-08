@@ -406,8 +406,8 @@ def undistort_img_coos(img_pts, interior_orient, mm_val=False):
             camCoo_y = y_img
             
             if interior_orient.r0 == 0:
-                x_dash = camCoo_x / (-1 * ck)
-                y_dash = camCoo_y / (-1 * ck)
+                x_dash = camCoo_x / (ck)
+                y_dash = camCoo_y / (ck)
                 r2 = x_dash**2 + y_dash**2  #img radius
             else:
                 x_dash = camCoo_x
