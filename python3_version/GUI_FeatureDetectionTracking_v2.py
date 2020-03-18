@@ -73,14 +73,98 @@ class FlowVeloTool:
         
         #text box for display output
         self.textbox = ScrolledText(master, height=10, width=20)
-        self.textbox.place(x=700, y=50, width=300, height=800)
-                                
-        
+        self.textbox.place(x=700, y=50, width=300, height=400)
+
+        note.grid(row=0, column=0, ipadx=300, ipady=260)
+
+        '''----------------frame co-registration-------------------'''
+        frame4 = Frame(note)
+        note.add(frame4, text="co-registration")
+
+        self.xButton = 370
+        self.xText = 250
+        self.xText2 = 350
+        self.yAddText = 10
+        self.yAddText2 = 10
+
+        # set parameters for co-registration
+        Label(frame4, text="Perform co-registration of frames", font=("Courier", 10)).place(x=10, y=self.yAddText)
+        self.yAddText = self.yAddText + 20
+        Label(frame4, text="Maximum number of keypoints (ORB): ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
+        self.coregist_kpnbr = tk.IntVar()
+        self.coregist_kpnbr_Param = Entry(frame4, textvariable=self.coregist_kpnbr, font=("Helvetica", 10, 'italic'))
+        self.coregist_kpnbr_Param.place(x=self.xText, y=self.yAddText, width=75, height=20)
+        self.coregist_kpnbr.set(1000)
+        self.coregist_kpnbr_Param.config(state='disabled')
+
+        self.yAddText = self.yAddText + 20
+        Label(frame4, text="Octave level (AKAZE): ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
+        self.thresholdDetector = tk.DoubleVar()
+        self.thresholdDetector_Param = Entry(frame4, textvariable=self.thresholdDetector,
+                                             font=("Helvetica", 10, 'italic'))
+        self.thresholdDetector_Param.place(x=self.xText, y=self.yAddText, width=75, height=20)
+        self.thresholdDetector.set(0.005)
+
+        # self.yAddText = self.yAddText + 20
+        # Label(frame4, text="Number of good matches: ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
+        self.nbr_good_matches = tk.IntVar()
+        # self.nbr_good_matches_Param = Entry(frame4, textvariable=self.nbr_good_matches, font=("Helvetica", 10, 'italic'))
+        # self.nbr_good_matches_Param.place(x=self.xText, y=self.yAddText, width=75, height=20)
+        self.nbr_good_matches.set(10)
+
+        self.yAddText = self.yAddText + 20
+        self.orb = tk.BooleanVar()
+        self.orb.set(False)
+        self.orbBut = tk.Checkbutton(frame4, text="Matching with ORB", variable=self.orb, font=("Helvetica", 10),
+                                     command=lambda: self.checkDescriptorORB())
+        self.orbBut.place(x=0, y=self.yAddText)
+
+        self.feature_match_twosided = tk.BooleanVar()
+        self.feature_match_twosided.set(True)
+        self.feature_match_twosidedBut = tk.Checkbutton(frame4, text="Feature matching 2sided", font=("Helvetica", 10),
+                                                        variable=self.feature_match_twosided)
+        self.feature_match_twosidedBut.place(x=185, y=self.yAddText)
+
+        self.yAddText = self.yAddText + 20
+        self.akaze = tk.BooleanVar()
+        self.akaze.set(True)
+        self.akazeBut = tk.Checkbutton(frame4, text="Matching with AKAZE", variable=self.akaze, font=("Helvetica", 10),
+                                       command=lambda: self.checkDescriptorAKAZE())
+        self.akazeBut.place(x=0, y=self.yAddText)
+
+        self.master_0 = tk.BooleanVar()
+        self.master_0.set(True)
+        self.master_0But = tk.Checkbutton(frame4, text="Register to first frame", variable=self.master_0,
+                                          font=("Helvetica", 10))
+        self.master_0But.place(x=185, y=self.yAddText)
+
+        # starting co-registration
+        self.yAddText = self.yAddText + 30
+        self.coregister = Button(frame4, text="Co-register frames", style="RB.TButton", command=self.coregistration)
+        self.coregister.place(x=10, y=self.yAddText)
+
+        self.yAddText = self.yAddText + 70
+        Label(frame4, text="Accuracy co-registration", font=("Courier", 10)).place(x=10, y=self.yAddText)
+        self.yAddText = self.yAddText + 20
+        Label(frame4, text="Template size for co-registration accuracy: ", font=("Helvetica", 10)).place(x=10,
+                                                                                                         y=self.yAddText)
+        self.template_size_coregAcc = tk.IntVar()
+        self.template_size_coregAcc_Param = Entry(frame4, textvariable=self.template_size_coregAcc,
+                                                  font=("Helvetica", 10, 'italic'))
+        self.template_size_coregAcc_Param.place(x=self.xText + 70, y=self.yAddText, width=75, height=20)
+        self.template_size_coregAcc.set(30)
+
+        # starting accuracy assessment co-registration
+        self.yAddText = self.yAddText + 30
+        self.coregisteracc = Button(frame4, text="Accuracy co-registration", style="RB.TButton",
+                                    command=self.accuracy_coregistration)
+        self.coregisteracc.place(x=10, y=self.yAddText)
+
+
         '''----------------frame flow velocity I-------------------'''
         frame = Frame(note)
-        note.add(frame, text="flow velocity I")
-        note.grid(row=0, column=0, ipadx=500, ipady=460)
-        
+        note.add(frame, text="flow velocity (I)")
+
         self.xButton = 370
         self.xText = 250
         self.xText2 = 350
@@ -110,6 +194,13 @@ class FlowVeloTool:
         #load files
         self.yAddText = self.yAddText + 50
         Label(frame, text="Data input", font=("Courier", 10)).place(x=10, y=self.yAddText)
+
+        self.VidChoice = tk.BooleanVar()
+        self.VidChoice.set(False)
+        self.VidChoiceBut = tk.Checkbutton(frame, text = "Convert video to frames", font=("Helvetica", 10),
+                                              variable=self.VidChoice, command = lambda:self.VideoFileToFrames())
+        self.VidChoiceBut.place(x=self.xText, y=self.yAddText - 10)
+
         self.yAddText = self.yAddText + 20
         Label(frame, text="Output directory: ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
         self.directoryOutput = tk.StringVar()
@@ -118,8 +209,7 @@ class FlowVeloTool:
         self.directoryOutput_Button = Button(frame, text = '...', command = lambda:self.select_dirOutput())
         self.directoryOutput_Button.place(x=self.xText, y=self.yAddText, width=20, height=20)
         self.directoryOutput.set(currentDirectory + '/tutorial/resultsFlowVelo/')
-        
-        self.yAddText = self.yAddText + 20
+
         Label(frame, text="Images directory: ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
         self.dir_imgs = tk.StringVar()
         self.dir_imgs_Param = Entry(frame, textvariable=self.dir_imgs, font=("Helvetica", 10, 'italic'))
@@ -173,17 +263,16 @@ class FlowVeloTool:
         self.img_name_Button.place(x=self.xText, y=self.yAddText, width=20, height=20)
         self.img_name.set(currentDirectory + '/tutorial/frames/frame003.png')
 
+        self.yAddText = self.yAddText + 50
+        self.stayImgSpace = tk.BooleanVar()
+        self.stayImgSpace.set(False)
+        self.stayImgSpaceBut = tk.Checkbutton(frame, text = "Stay in image space", font=("Helvetica", 10),
+                                              variable=self.stayImgSpace, command = lambda:self.checkImgSpace())
+        self.stayImgSpaceBut.place(x=0, y=self.yAddText)
 
         #exterior estimate
         self.yAddText = self.yAddText + 50
         Label(frame, text="Exterior orientation", font=("Courier", 10)).place(x=10, y=self.yAddText)
-        
-        self.yAddText = self.yAddText + 20
-        self.stayImgSpace = tk.BooleanVar()
-        self.stayImgSpace.set(False)
-        self.stayImgSpaceBut = tk.Checkbutton(frame, text = "Stay in image space", font=("Helvetica", 10), 
-                                              variable=self.stayImgSpace, command = lambda:self.checkImgSpace())
-        self.stayImgSpaceBut.place(x=0, y=self.yAddText)           
         
         self.yAddText = self.yAddText + 20
         self.estimate_exterior = tk.BooleanVar()
@@ -199,7 +288,7 @@ class FlowVeloTool:
         self.ransacApproxBut = tk.Checkbutton(frame, text = "Use RANSAC for exterior estimation", variable=self.ransacApprox,
                                               font=("Helvetica", 10), command = lambda:self.checkExterior())
         self.ransacApproxBut.place(x=0, y=self.yAddText)
-                       
+
         self.yAddText = self.yAddText + 20
         Label(frame, text="Approximate position: ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
         self.pos_eor_Str = tk.StringVar()
@@ -224,7 +313,7 @@ class FlowVeloTool:
 
         '''----------------frame flow velocity II-------------------'''
         frame1 = Frame(note)
-        note.add(frame1, text="flow velocity II")
+        note.add(frame1, text="flow velocity (II)")
 
         self.xButton = 370
         self.xText = 250
@@ -417,7 +506,7 @@ class FlowVeloTool:
 
         '''----------------frame flow velocity III-------------------'''
         frame2 = Frame(note)
-        note.add(frame2, text="flow velocity III")
+        note.add(frame2, text="flow velocity (III)")
 
         self.xButton = 370
         self.xText = 250
@@ -426,7 +515,7 @@ class FlowVeloTool:
         #only filter tracks
         self.filterOnly = tk.BooleanVar()
         self.filterOnly.set(False)
-        self.filterOnlyBut = tk.Checkbutton(frame2, text = "Filter only tracks", variable=self.filterOnly, font=("Helvetica", 10),
+        self.filterOnlyBut = tk.Checkbutton(frame2, text = "Only filter and scale tracks", variable=self.filterOnly, font=("Helvetica", 10),
                                             command = lambda:self.checkFilter())
         self.filterOnlyBut.place(x=self.xText - 250, y=self.yAddText)
         self.filterOnlyBut.config(font=("Helvetica", 10))
@@ -501,7 +590,7 @@ class FlowVeloTool:
 
         '''----------------frame flow velocity IV-------------------'''
         frame3 = Frame(note)
-        note.add(frame3, text="flow velocity IV")
+        note.add(frame3, text="flow velocity (IV)")
 
         self.xButton = 370
         self.xText = 250
@@ -537,7 +626,7 @@ class FlowVeloTool:
         self.importAoIextent.set(False)
         self.importAoIextentBut = tk.Checkbutton(frame3, text = "Import search area file", variable=self.importAoIextent,
                                                  font=("Helvetica", 10), command = lambda:self.checkSearchArea())
-        self.importAoIextentBut.place(x=230, y=self.yAddText2)
+        self.importAoIextentBut.place(x=220, y=self.yAddText2)
         self.AoI_file = tk.StringVar()
         self.AoI_file_Param = Entry(frame3, textvariable=self.AoI_file, font=("Helvetica", 10, 'italic'), state='disabled')
         self.AoI_file_Param.place(x=430, y=self.yAddText2, width=200, height=20)
@@ -546,91 +635,9 @@ class FlowVeloTool:
 
            
         #starting flow velocity estimation
-        self.yAddText = self.yAddText + 70
+        self.yAddText = self.yAddText + 120
         self.waterlineDetection = Button(frame3, text="Estimate Flow Velocity", style="RB.TButton", command=self.EstimateVelocity)
         self.waterlineDetection.place(x=250, y=self.yAddText+30)
-        
-
-        '''----------------frame co-registration-------------------'''
-        frame4 = Frame(note)
-        note.add(frame4, text="co-registration")
-        
-        self.xButton = 370
-        self.xText = 250
-        self.xText2 = 350
-        self.yAddText = 10
-        self.yAddText2 = 10
-
-        #set parameters for co-registration
-        Label(frame4, text="Perform co-registration of frames", font=("Courier", 10)).place(x=10, y=self.yAddText)
-        self.yAddText = self.yAddText + 20
-        Label(frame4, text="Maximum number of keypoints (ORB): ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
-        self.coregist_kpnbr = tk.IntVar()
-        self.coregist_kpnbr_Param = Entry(frame4, textvariable=self.coregist_kpnbr, font=("Helvetica", 10, 'italic'))
-        self.coregist_kpnbr_Param.place(x=self.xText, y=self.yAddText, width=75, height=20)
-        self.coregist_kpnbr.set(1000)
-        self.coregist_kpnbr_Param.config(state='disabled')
-
-        self.yAddText = self.yAddText + 20
-        Label(frame4, text="Octave level (AKAZE): ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
-        self.thresholdDetector = tk.DoubleVar()
-        self.thresholdDetector_Param = Entry(frame4, textvariable=self.thresholdDetector, font=("Helvetica", 10, 'italic'))
-        self.thresholdDetector_Param.place(x=self.xText, y=self.yAddText, width=75, height=20)
-        self.thresholdDetector.set(0.005)
-
-        # self.yAddText = self.yAddText + 20
-        # Label(frame4, text="Number of good matches: ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
-        self.nbr_good_matches = tk.IntVar()
-        # self.nbr_good_matches_Param = Entry(frame4, textvariable=self.nbr_good_matches, font=("Helvetica", 10, 'italic'))
-        # self.nbr_good_matches_Param.place(x=self.xText, y=self.yAddText, width=75, height=20)
-        self.nbr_good_matches.set(10)
-       
-        self.yAddText = self.yAddText + 20
-        self.orb = tk.BooleanVar()
-        self.orb.set(False)
-        self.orbBut = tk.Checkbutton(frame4, text = "Matching with ORB", variable=self.orb, font=("Helvetica", 10),
-                                     command = lambda:self.checkDescriptorORB())
-        self.orbBut.place(x=0, y=self.yAddText)
-
-        self.feature_match_twosided = tk.BooleanVar()
-        self.feature_match_twosided.set(True)
-        self.feature_match_twosidedBut = tk.Checkbutton(frame4, text = "Feature matching 2sided", font=("Helvetica", 10),
-                                                        variable=self.feature_match_twosided)
-        self.feature_match_twosidedBut.place(x=185, y=self.yAddText)
-
-        self.yAddText = self.yAddText + 20
-        self.akaze = tk.BooleanVar()
-        self.akaze.set(True)
-        self.akazeBut = tk.Checkbutton(frame4, text = "Matching with AKAZE", variable=self.akaze, font=("Helvetica", 10),
-                                       command = lambda:self.checkDescriptorAKAZE())
-        self.akazeBut.place(x=0, y=self.yAddText)
-
-        self.master_0 = tk.BooleanVar()
-        self.master_0.set(True)
-        self.master_0But = tk.Checkbutton(frame4, text = "Register to first frame", variable=self.master_0, font=("Helvetica", 10))
-        self.master_0But.place(x=185, y=self.yAddText)
-
-
-        #starting co-registration
-        self.yAddText = self.yAddText + 30
-        self.coregister = Button(frame4, text="Co-register frames", style="RB.TButton", command=self.coregistration)
-        self.coregister.place(x=10, y=self.yAddText)   
-        
-        
-        self.yAddText = self.yAddText + 70             
-        Label(frame4, text="Accuracy co-registration", font=("Courier", 10)).place(x=10, y=self.yAddText)
-        self.yAddText = self.yAddText + 20
-        Label(frame4, text="Template size for co-registration accuracy: ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
-        self.template_size_coregAcc = tk.IntVar()
-        self.template_size_coregAcc_Param = Entry(frame4, textvariable=self.template_size_coregAcc, font=("Helvetica", 10, 'italic'))
-        self.template_size_coregAcc_Param.place(x=self.xText+70, y=self.yAddText, width=75, height=20)
-        self.template_size_coregAcc.set(30)        
-
-        #starting accuracy assessment co-registration
-        self.yAddText = self.yAddText + 30
-        self.coregisteracc = Button(frame4, text="Accuracy co-registration", style="RB.TButton", command=self.accuracy_coregistration)
-        self.coregisteracc.place(x=10, y=self.yAddText) 
-
 
     def checkImgSpace(self):
         if self.stayImgSpace.get() == True:
@@ -865,15 +872,30 @@ class FlowVeloTool:
             self.directoryOutput.set(outputDir  + '/')
             
     def select_dirImgs(self):
-        imgsDir = tk.filedialog.askdirectory(title = 'Select directory of frames')
-        if not imgsDir:
+        fileDir = tk.filedialog.askdirectory(title = 'Select directory of frames', initialdir=os.getcwd())
+        if not fileDir:
             self.dir_imgs.set("")
         else:
-            self.dir_imgs.set(imgsDir  + '/')
+            self.dir_imgs.set(fileDir  + '/')
+
+    def VideoFileToFrames(self):
+        videoFile = tk.filedialog.askopenfilename(title='Select video file', initialdir=os.getcwd())
+        fileDirFrames = tk.filedialog.askdirectory(title = 'Select output directory for frames', initialdir=os.getcwd()) + '/'
+
+        vidcap = cv2.VideoCapture(videoFile)
+        success, image = vidcap.read()
+        count = 0
+        while success:
+            cv2.imwrite(fileDirFrames + "frame%05d.png" % count, image)  # save frame as JPEG file
+            success, image = vidcap.read()
+            if count % 10 == 0:
+                print(str(count) + " frames converted")
+            count += 1
+        print("video converted to frames")
                                          
     def select_imgName(self):
        imgName = tk.filedialog.askopenfilename(title='Image to draw velocity tracks for visualisation',
-                                              initialdir=os.getcwd())
+                                               filetypes=[('Video file (*.txt)', '*.txt')], initialdir=os.getcwd())
        if not imgName:
            self.img_name.set("")
        else:
@@ -1437,9 +1459,9 @@ def main():
 
     root = tk.Tk()
 
-    size_width = str(root.winfo_screenwidth())
-    size_height = str(root.winfo_screenheight())
-    root.geometry(size_width + "x" + size_height)
+    # size_width = str(root.winfo_screenwidth())
+    # size_height = str(root.winfo_screenheight())
+    # root.geometry(size_width + "x" + size_height)
     
     app = FlowVeloTool(root)   
     
