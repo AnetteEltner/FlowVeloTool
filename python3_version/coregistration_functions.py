@@ -35,7 +35,7 @@ import draw_functions as drawF
 
 
 '''perform coregistration'''
-def coregistration(image_list, directory_out, kp_nbr=None, descriptorVersion="sift",
+def coregistration(image_list, directory_out, reduceKepoints=None, descriptorVersion="orb",
                    feature_match_twosided=False, nbr_good_matches=10, 
                    master_0 = True):
 #descriptor versions: sift, orb, akaze, freak
@@ -49,25 +49,19 @@ def coregistration(image_list, directory_out, kp_nbr=None, descriptorVersion="si
     #cv2.imwrite(os.path.join(directory_out, master_img_dirs[-1])[:-4] + '_coreg.jpg', img_master)         
     
     if master_0 == True:    #matching to master
-        '''detect Harris keypoints in master image'''
-        keypoints_master, _ = HarrisCorners(master_img_name, kp_nbr, False)
-        
         '''calculate ORB or SIFT descriptors in master image'''
         if descriptorVersion == "orb":
-            keypoints_master, descriptor_master = OrbDescriptors(master_img_name, keypoints_master)
+            keypoints_master, descriptor_master = OrbDescriptors(master_img_name, reduceKepoints)
             print('ORB descriptors calculated for master ' + master_img_dirs[-1])
         elif descriptorVersion == "sift":
+            '''detect Harris keypoints in master image'''
+            keypoints_master, _ = HarrisCorners(master_img_name, reduceKepoints, False)
             keypoints_master, descriptor_master = SiftDescriptors(master_img_name, keypoints_master)
             print('SIFT descriptors calculated for master ' + master_img_dirs[-1])
         elif descriptorVersion == "akaze":
-            keypoints_master, descriptor_master = AKAZEDescriptors(master_img_name)
+            keypoints_master, descriptor_master = AKAZEDescriptors(master_img_name, reduceKepoints)
             print('AKAZE descriptors calculated for master ' + master_img_dirs[-1])
-    
-    
-#    '''border mask preparation (for temp texture)'''
-#    maskForBorderRegion_16UC1 = np.ones((img_master.shape[0], img_master.shape[1]))
-#    maskForBorderRegion_16UC1 = maskForBorderRegion_16UC1.astype(np.uint16)
-    
+
     
     '''perform co-registration for each image'''
     i = 0
@@ -80,20 +74,19 @@ def coregistration(image_list, directory_out, kp_nbr=None, descriptorVersion="si
             '''skip first image (because usage of subsequent images)'''
             if i == 0:
                 i = i + 1
-                continue   
-            
-            '''detect Harris keypoints in master image'''
-            keypoints_master, _ = HarrisCorners(slave_img_name, kp_nbr, False)           
+                continue
             
             '''calculate ORB or SIFT descriptors in master image'''
             if descriptorVersion == "orb":
-                keypoints_master, descriptor_master = OrbDescriptors(slave_img_name, keypoints_master)
+                keypoints_master, descriptor_master = OrbDescriptors(slave_img_name, reduceKepoints)
                 print('ORB descriptors calculated for master ' + slave_img_dirs[-1])
             elif descriptorVersion == "sift":
+                '''detect Harris keypoints in master image'''
+                keypoints_master, _ = HarrisCorners(slave_img_name, reduceKepoints, False)
                 keypoints_master, descriptor_master = SiftDescriptors(slave_img_name, keypoints_master)
                 print('SIFT descriptors calculated for master ' + slave_img_dirs[-1])
             elif descriptorVersion == "akaze":
-                keypoints_master, descriptor_master = AKAZEDescriptors(slave_img_name)
+                keypoints_master, descriptor_master = AKAZEDescriptors(slave_img_name, reduceKepoints)
                 print('AKAZE descriptors calculated for master ' + slave_img_dirs[-1])
         
          
@@ -105,18 +98,17 @@ def coregistration(image_list, directory_out, kp_nbr=None, descriptorVersion="si
         slave_img_name_1 = image_list[i]
         slave_img_dirs_1 = slave_img_name_1.split("/") 
 
-        '''detect Harris keypoints in image to register'''
-        keypoints_image, _ = HarrisCorners(slave_img_name_1, kp_nbr, False)
-    
         '''calculate ORB or SIFT descriptors in image to register'''
         if descriptorVersion == "orb":
-            keypoints_image, descriptor_image = OrbDescriptors(slave_img_name_1, keypoints_image)
+            keypoints_image, descriptor_image = OrbDescriptors(slave_img_name_1, reduceKepoints)
             print('ORB descriptors calculated for image ' + slave_img_dirs_1[-1])
         elif descriptorVersion == "sift":
+            '''detect Harris keypoints in image to register'''
+            keypoints_image, _ = HarrisCorners(slave_img_name_1, reduceKepoints, False)
             keypoints_image, descriptor_image = SiftDescriptors(slave_img_name_1, keypoints_image)
             print('SIFT descriptors calculated for image ' + slave_img_dirs_1[-1])
         elif descriptorVersion == "akaze":
-            keypoints_image, descriptor_image = AKAZEDescriptors(slave_img_name_1)
+            keypoints_image, descriptor_image = AKAZEDescriptors(slave_img_name_1, reduceKepoints)
             print('AKAZE descriptors calculated for image ' + slave_img_dirs_1[-1])
         
         
@@ -151,6 +143,7 @@ def coregistration(image_list, directory_out, kp_nbr=None, descriptorVersion="si
             
             #save co-registered image
             cv2.imwrite(os.path.join(directory_out, slave_img_dirs_1[-1])[:-4] + '_coreg.jpg', img_coregistered)
+
         i = i + 1   
 
 
@@ -262,7 +255,7 @@ def HarrisCorners(image, kp_nbr=None,  img_import=False):
 
 
 #calculate ORB descriptors at detected features (using various feature detectors)
-def OrbDescriptors(image, keypoints, img_import=False):
+def OrbDescriptors(image, kp_nbr=None, img_import=False):
     if not img_import:
         image = cv2.imread(image)
     image_gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)                                             
@@ -270,11 +263,16 @@ def OrbDescriptors(image, keypoints, img_import=False):
     
     '''perform ORB'''
     if "4." in cv2.__version__ or "3." in cv2.__version__:
-        orb = cv2.ORB_create()
+        if not kp_nbr == None:
+            orb = cv2.ORB_create(nfeatures=kp_nbr)
+        else:
+            orb = cv2.ORB_create()
     else:
         orb = cv2.ORB()
     try:
-        keypoints, descriptors = orb.compute(image_gray, keypoints)
+        # find the keypoints with ORB
+        keypoints = orb.detect(image_gray, None) #FAST detector
+        keypoints, descriptors = orb.compute(image_gray, keypoints) #BRIEF descriptor
     except Exception as e:
         print(e)
 
@@ -328,13 +326,16 @@ def FREAKDescriptors(image, keypoints, img_import=False):
     return keypoints, descriptors
 
 #AKAZE descriptors
-def AKAZEDescriptors(image, img_import=False):
+def AKAZEDescriptors(image, thresholdDetector=None, img_import=False):
     if not img_import:
         image = cv2.imread(image)
     image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     image_gray = np.uint8(image_gray)
 
-    akaze = cv2.AKAZE_create()
+    if not thresholdDetector == None:
+        akaze = cv2.AKAZE_create(threshold=np.float(thresholdDetector))
+    else:
+        akaze = cv2.AKAZE_create()
     keypoints, descriptors = akaze.detectAndCompute(image_gray, None)
 
     return keypoints, descriptors
@@ -366,26 +367,28 @@ def match_DescriptorsBF_NN(kpts1, kpts2, desc1, desc2, twosided=True):
 
         pts1_arr = np.asarray(matched1)
         pts2_arr = np.asarray(matched2)
-        pts_12 = np.hstack((pts1_arr, pts2_arr))
+        pts_12 = np.vstack((pts1_arr, pts2_arr)).T
         pts1_arr_b = np.asarray(matched1_b)
         pts2_arr_b = np.asarray(matched2_b)
-        pts_21 = np.hstack((pts1_arr_b, pts2_arr_b))
+        pts_21 = np.vstack((pts1_arr_b, pts2_arr_b)).T
 
         pts1_ts = []
         pts2_ts = []
         for pts in pts_12:
-            pts_comp = np.asarray(pts, dtype=np.int)
+            pts_comp_1 = np.asarray(pts[0].pt, dtype=np.int)
+            pts_comp_2 = np.asarray(pts[1].pt, dtype=np.int)
             for pts_b in pts_21:
-                pts_b_comp = np.asarray(pts_b, dtype=np.int)
-                if ((int(pts_comp[0]) == int(pts_b_comp[2])) and (int(pts_comp[1]) == int(pts_b_comp[3]))
-                        and (int(pts_comp[2]) == int(pts_b_comp[0])) and (int(pts_comp[3]) == int(pts_b_comp[1]))):
-                    pts1_ts.append(pts[0:2].tolist())
-                    pts2_ts.append(pts[2:4].tolist())
+                pts_comp_b_1 = np.asarray(pts_b[0].pt, dtype=np.int)
+                pts_comp_b_2 = np.asarray(pts_b[1].pt, dtype=np.int)
+                if ((pts_comp_1[0] == pts_comp_b_2[0]) and (pts_comp_1[1] == pts_comp_b_2[1])
+                    and (pts_comp_2[0] == pts_comp_b_1[0]) and (pts_comp_2[1] == pts_comp_b_1[1])):
+                    pts1_ts.append(pts[0].pt)
+                    pts2_ts.append(pts[1].pt)
 
                     break
 
-        pts1 = pts1_ts
-        pts2 = pts2_ts
+        pts1 = np.asarray(pts1_ts)
+        pts2 = np.asarray(pts2_ts)
 
     return pts1, pts2
 

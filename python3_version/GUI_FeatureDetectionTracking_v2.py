@@ -564,22 +564,30 @@ class FlowVeloTool:
         #set parameters for co-registration
         Label(frame4, text="Perform co-registration of frames", font=("Courier", 10)).place(x=10, y=self.yAddText)
         self.yAddText = self.yAddText + 20
-        Label(frame4, text="Maximum number of keypoints: ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
+        Label(frame4, text="Maximum number of keypoints (ORB): ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
         self.coregist_kpnbr = tk.IntVar()
         self.coregist_kpnbr_Param = Entry(frame4, textvariable=self.coregist_kpnbr, font=("Helvetica", 10, 'italic'))
         self.coregist_kpnbr_Param.place(x=self.xText, y=self.yAddText, width=75, height=20)
-        self.coregist_kpnbr.set(5000)
-        
+        self.coregist_kpnbr.set(1000)
+        self.coregist_kpnbr_Param.config(state='disabled')
+
         self.yAddText = self.yAddText + 20
-        Label(frame4, text="Number of good matches: ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
+        Label(frame4, text="Octave level (AKAZE): ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
+        self.thresholdDetector = tk.DoubleVar()
+        self.thresholdDetector_Param = Entry(frame4, textvariable=self.thresholdDetector, font=("Helvetica", 10, 'italic'))
+        self.thresholdDetector_Param.place(x=self.xText, y=self.yAddText, width=75, height=20)
+        self.thresholdDetector.set(0.005)
+
+        # self.yAddText = self.yAddText + 20
+        # Label(frame4, text="Number of good matches: ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
         self.nbr_good_matches = tk.IntVar()
-        self.nbr_good_matches_Param = Entry(frame4, textvariable=self.nbr_good_matches, font=("Helvetica", 10, 'italic'))
-        self.nbr_good_matches_Param.place(x=self.xText, y=self.yAddText, width=75, height=20)
+        # self.nbr_good_matches_Param = Entry(frame4, textvariable=self.nbr_good_matches, font=("Helvetica", 10, 'italic'))
+        # self.nbr_good_matches_Param.place(x=self.xText, y=self.yAddText, width=75, height=20)
         self.nbr_good_matches.set(10)
        
         self.yAddText = self.yAddText + 20
         self.orb = tk.BooleanVar()
-        self.orb.set(True)
+        self.orb.set(False)
         self.orbBut = tk.Checkbutton(frame4, text = "Matching with ORB", variable=self.orb, font=("Helvetica", 10),
                                      command = lambda:self.checkDescriptorORB())
         self.orbBut.place(x=0, y=self.yAddText)
@@ -592,7 +600,7 @@ class FlowVeloTool:
 
         self.yAddText = self.yAddText + 20
         self.akaze = tk.BooleanVar()
-        self.akaze.set(False)
+        self.akaze.set(True)
         self.akazeBut = tk.Checkbutton(frame4, text = "Matching with AKAZE", variable=self.akaze, font=("Helvetica", 10),
                                        command = lambda:self.checkDescriptorAKAZE())
         self.akazeBut.place(x=0, y=self.yAddText)
@@ -773,14 +781,22 @@ class FlowVeloTool:
     def checkDescriptorORB(self):
         if self.orb.get() == True:
             self.akaze.set(False)
+            self.thresholdDetector_Param.config(state = 'disabled')
+            self.coregist_kpnbr_Param.config(state='normal')
         if self.orb.get() == False:
             self.akaze.set(True)
+            self.thresholdDetector_Param.config(state='normal')
+            self.coregist_kpnbr_Param.config(state='disabled')
 
     def checkDescriptorAKAZE(self):
         if self.akaze.get() == True:
             self.orb.set(False)
+            self.coregist_kpnbr_Param.config(state = 'disabled')
+            self.thresholdDetector_Param.config(state='normal')
         if self.akaze.get() == False:
             self.orb.set(True)
+            self.coregist_kpnbr_Param.config(state='normal')
+            self.thresholdDetector_Param.config(state='disabled')
 
     def checkSearchArea(self):
         if self.importAoIextent.get() == True:
@@ -1094,10 +1110,12 @@ class FlowVeloTool:
 
         if self.orb.get() == True:
             descrVers = "orb"
+            reduceKeypoints = self.coregist_kpnbr.get()
         else:
             descrVers = "akaze"
+            reduceKeypoints = self.thresholdDetector.get()
 
-        coregF.coregistration(image_list, directoryOutput_coreg, self.coregist_kpnbr.get(), descrVers,
+        coregF.coregistration(image_list, directoryOutput_coreg, reduceKeypoints, descrVers,
                               self.feature_match_twosided.get(), self.nbr_good_matches.get())      
                 
         print('Co-registration finished.')
