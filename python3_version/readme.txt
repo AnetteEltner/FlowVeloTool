@@ -23,7 +23,6 @@ Additional libraries:
 
 
 Running FlowVelo on Windows
--	Download from source code from GitHub 
 -	Install PyCharm
 -	In PyCharm:
   o	Go to File -> Create New Project…
@@ -34,7 +33,8 @@ Running FlowVelo on Windows
       •	Go to Project Interpreter
           o	Go to +
           o	Install libraries mentioned in requirements
--	Unpack FlowVeloTool.zip and put all scripts including the tutorial folder into set location folder
+-	Download source code of FlowVeloTool from GitHub 	  
+-	Unpack FlowVeloTool.zip and put all scripts including the tutorial folder into chosen location folder
 -	Open GUI_FeatureDetectionTracking.py
 
 -	There might be an issue with the screen resolution, hindering the visibility of the entire window. If this is the case, please lower the screen resolution.
