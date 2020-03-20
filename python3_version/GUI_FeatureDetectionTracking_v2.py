@@ -210,6 +210,7 @@ class FlowVeloTool:
         self.directoryOutput_Button.place(x=self.xText, y=self.yAddText, width=20, height=20)
         self.directoryOutput.set(currentDirectory + '/tutorial/resultsFlowVelo/')
 
+        self.yAddText = self.yAddText + 20
         Label(frame, text="Images directory: ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
         self.dir_imgs = tk.StringVar()
         self.dir_imgs_Param = Entry(frame, textvariable=self.dir_imgs, font=("Helvetica", 10, 'italic'))
