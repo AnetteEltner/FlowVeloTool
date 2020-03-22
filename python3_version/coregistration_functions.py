@@ -43,13 +43,13 @@ def coregistration(image_list, directory_out, reduceKepoints=None, descriptorVer
     if not os.path.exists(directory_out):
         os.system('mkdir ' + directory_out)
     
-    master_img_name = image_list[1]
+    master_img_name = image_list[0]
     master_img_dirs = master_img_name.split("/")    
     img_master = cv2.imread(master_img_name)
     #cv2.imwrite(os.path.join(directory_out, master_img_dirs[-1])[:-4] + '_coreg.jpg', img_master)         
     
     if master_0 == True:    #matching to master
-        '''calculate ORB or SIFT descriptors in master image'''
+        '''calculate descriptors in master image'''
         if descriptorVersion == "orb":
             keypoints_master, descriptor_master = OrbDescriptors(master_img_name, reduceKepoints)
             print('ORB descriptors calculated for master ' + master_img_dirs[-1])
@@ -64,52 +64,66 @@ def coregistration(image_list, directory_out, reduceKepoints=None, descriptorVer
 
     
     '''perform co-registration for each image'''
-    i = 0
+    i = 1
     while i < len(image_list):
 
-        slave_img_name = image_list[i-1]
+        slave_img_name = image_list[i]
         slave_img_dirs = slave_img_name.split("/") 
                 
         if master_0 == False:   #matching always to subsequent frame (no master)
             '''skip first image (because usage of subsequent images)'''
-            if i == 0:
+            if i == 1:
                 i = i + 1
                 continue
-            
-            '''calculate ORB or SIFT descriptors in master image'''
-            if descriptorVersion == "orb":
-                keypoints_master, descriptor_master = OrbDescriptors(slave_img_name, reduceKepoints)
-                print('ORB descriptors calculated for master ' + slave_img_dirs[-1])
-            elif descriptorVersion == "sift":
-                '''detect Harris keypoints in master image'''
-                keypoints_master, _ = HarrisCorners(slave_img_name, reduceKepoints, False)
-                keypoints_master, descriptor_master = SiftDescriptors(slave_img_name, keypoints_master)
-                print('SIFT descriptors calculated for master ' + slave_img_dirs[-1])
-            elif descriptorVersion == "akaze":
-                keypoints_master, descriptor_master = AKAZEDescriptors(slave_img_name, reduceKepoints)
-                print('AKAZE descriptors calculated for master ' + slave_img_dirs[-1])
+
+            if i == 2: #only once take both images from original folder
+                '''calculate descriptors in master image'''
+                if descriptorVersion == "orb":
+                    keypoints_master, descriptor_master = OrbDescriptors(slave_img_name, reduceKepoints)
+                    print('ORB descriptors calculated for master ' + slave_img_dirs[-1])
+                elif descriptorVersion == "sift":
+                    '''detect Harris keypoints in master image'''
+                    keypoints_master, _ = HarrisCorners(slave_img_name, reduceKepoints, False)
+                    keypoints_master, descriptor_master = SiftDescriptors(slave_img_name, keypoints_master)
+                    print('SIFT descriptors calculated for master ' + slave_img_dirs[-1])
+                elif descriptorVersion == "akaze":
+                    keypoints_master, descriptor_master = AKAZEDescriptors(slave_img_name, reduceKepoints)
+                    print('AKAZE descriptors calculated for master ' + slave_img_dirs[-1])
+            else: #co-registered image will be master for next image from original folder
+                '''calculate descriptors in master image'''
+                if descriptorVersion == "orb":
+                    keypoints_master, descriptor_master = OrbDescriptors(img_coregistered, reduceKepoints, True)
+                    print('ORB descriptors calculated for master ' + slave_img_dirs[-1])
+                elif descriptorVersion == "sift":
+                    '''detect Harris keypoints in master image'''
+                    keypoints_master, _ = HarrisCorners(img_coregistered, reduceKepoints, True)
+                    keypoints_master, descriptor_master = SiftDescriptors(img_coregistered, keypoints_master, True)
+                    print('SIFT descriptors calculated for master ' + slave_img_dirs[-1])
+                elif descriptorVersion == "akaze":
+                    keypoints_master, descriptor_master = AKAZEDescriptors(img_coregistered, reduceKepoints, True)
+                    print('AKAZE descriptors calculated for master ' + slave_img_dirs[-1])
         
          
-        '''skip first image (because already read as master)'''
-        if slave_img_dirs[-1] == master_img_dirs[-1]:
-            i = i + 1
-            continue
-    
-        slave_img_name_1 = image_list[i]
-        slave_img_dirs_1 = slave_img_name_1.split("/") 
+        # '''skip first image (because already read as master)'''
+        # if slave_img_dirs[-1] == master_img_dirs[-1]:
+        #     i = i + 1
+        #     continue
+        #
+        # slave_img_name_1 = image_list[i]
+        # slave_img_dirs_1 = slave_img_name_1.split("/")
 
         '''calculate ORB or SIFT descriptors in image to register'''
         if descriptorVersion == "orb":
-            keypoints_image, descriptor_image = OrbDescriptors(slave_img_name_1, reduceKepoints)
-            print('ORB descriptors calculated for image ' + slave_img_dirs_1[-1])
+            keypoints_image, descriptor_image = OrbDescriptors(slave_img_name, reduceKepoints)
+            print('ORB descriptors calculated for image ' + slave_img_dirs[-1])
         elif descriptorVersion == "sift":
             '''detect Harris keypoints in image to register'''
-            keypoints_image, _ = HarrisCorners(slave_img_name_1, reduceKepoints, False)
-            keypoints_image, descriptor_image = SiftDescriptors(slave_img_name_1, keypoints_image)
-            print('SIFT descriptors calculated for image ' + slave_img_dirs_1[-1])
+            keypoints_image, _ = HarrisCorners(slave_img_name, reduceKepoints, False)
+            keypoints_image, descriptor_image = SiftDescriptors(slave_img_name, keypoints_image)
+            print('SIFT descriptors calculated for image ' + slave_img_dirs[-1])
         elif descriptorVersion == "akaze":
-            keypoints_image, descriptor_image = AKAZEDescriptors(slave_img_name_1, reduceKepoints)
-            print('AKAZE descriptors calculated for image ' + slave_img_dirs_1[-1])
+            keypoints_image, descriptor_image = AKAZEDescriptors(slave_img_name, reduceKepoints)
+            print('AKAZE descriptors calculated for image ' + slave_img_dirs[-1])
         
         
         '''match images to master using feature descriptors'''
@@ -121,7 +135,6 @@ def coregistration(image_list, directory_out, reduceKepoints=None, descriptorVer
         elif descriptorVersion == "sift":
             if feature_match_twosided:
                 matched_pts_master, matched_pts_img = match_twosidedSift(descriptor_master, descriptor_image, keypoints_master, keypoints_image, "FLANN")
-
             else:
                 matchscores = SiftMatchFLANN(descriptor_master, descriptor_image)
                 matched_pts_master = np.float32([keypoints_master[m[0].queryIdx].pt for m in matchscores]).reshape(-1,2)
@@ -138,37 +151,29 @@ def coregistration(image_list, directory_out, reduceKepoints=None, descriptorVer
             H_matrix, _ = cv2.findHomography(matched_pts_img, matched_pts_master, cv2.RANSAC, 3)
             
             # Warp source image to destination based on homography
-            img_src = cv2.imread(slave_img_name_1)
+            img_src = cv2.imread(slave_img_name)
             img_coregistered = cv2.warpPerspective(img_src, H_matrix, (img_master.shape[1],img_master.shape[0]))      #cv2.PerspectiveTransform() for points only
             
             #save co-registered image
-            cv2.imwrite(os.path.join(directory_out, slave_img_dirs_1[-1])[:-4] + '_coreg.jpg', img_coregistered)
+            cv2.imwrite(os.path.join(directory_out, slave_img_dirs[-1])[:-4] + '_coreg.jpg', img_coregistered)
 
         i = i + 1   
 
 
-def coregistrationListOut(image_list, kp_nbr=None, sift_vers=False, 
+def coregistrationListOut(image_list, reduceKepoints=None, descriptorVersion="orb",
                           feature_match_twosided=False, nbr_good_matches=10):
   
     img_master = image_list[1]
 
-    '''detect Harris keypoints in master image'''
-    keypoints_master, _ = HarrisCorners(img_master, kp_nbr, True)
-    
     '''calculate ORB or SIFT descriptors in master image'''
-    if not sift_vers:
-        keypoints_master, descriptor_master = OrbDescriptors(img_master, keypoints_master, True)
-        print('ORB descriptors calculated for master')
-    else: 
-        #keypoints_master, descriptor_master = SiftDescriptors(img_master, keypoints_master, True)
-        keypoints_master, descriptor_master = AKAZEDescriptors(img_master, True)
-        print('SIFT descriptors calculated for master')
-    
-    
-#    '''border mask preparation (for temp texture)'''
-#    maskForBorderRegion_16UC1 = np.ones((img_master.shape[0], img_master.shape[1]))
-#    maskForBorderRegion_16UC1 = maskForBorderRegion_16UC1.astype(np.uint16)
-    
+    if descriptorVersion == 'orb':
+        keypoints_master, descriptor_master = OrbDescriptors(img_master, reduceKepoints, True)
+    elif descriptorVersion == 'sift':
+        keypoints_master, _ = HarrisCorners(img_master, reduceKepoints, True)
+        keypoints_master, descriptor_master = SiftDescriptors(img_master, keypoints_master, True)
+    elif descriptorVersion == 'akaze':
+        keypoints_master, descriptor_master = AKAZEDescriptors(img_master, reduceKepoints, True)
+    print('descriptors calculated for master')
     
     '''perform co-registration for each image'''
     i = 1
@@ -178,32 +183,34 @@ def coregistrationListOut(image_list, kp_nbr=None, sift_vers=False,
 
         slave_img = image_list[i] 
 
-        '''detect Harris keypoints in image to register'''
-        keypoints_image, _ = HarrisCorners(slave_img, kp_nbr, True)
-    
         '''calculate ORB or SIFT descriptors in image to register'''
-        if not sift_vers:
-            keypoints_image, descriptor_image = OrbDescriptors(slave_img, keypoints_image, True)
-            print('ORB descriptors calculated for image ' + str(i))
-        else:
-            #keypoints_image, descriptor_image = SiftDescriptors(slave_img, keypoints_image, True)
-            keypoints_image, descriptor_image = AKAZEDescriptors(slave_img, True)
-            print('SIFT descriptors calculated for image ' + str(i))
+        if descriptorVersion == 'orb':
+            keypoints_image, descriptor_image = OrbDescriptors(slave_img, reduceKepoints, True)
+        elif descriptorVersion == 'sift':
+            keypoints_image, _ = HarrisCorners(slave_img, reduceKepoints, True)
+            keypoints_image, descriptor_image = SiftDescriptors(slave_img, reduceKepoints, True)
+        elif descriptorVersion == 'akaze':
+            keypoints_image, descriptor_image = AKAZEDescriptors(slave_img, reduceKepoints, True)
+        print('descriptors calculated for image ' + str(i))
         
         
         '''match images to master using feature descriptors (SIFT)'''  
-        if not sift_vers:
+        if descriptorVersion == 'orb':
             matched_pts_master, matched_pts_img = match_DescriptorsBF(descriptor_master, descriptor_image, keypoints_master, keypoints_image,
-                                                                      True,feature_match_twosided)
+                                                                      True, feature_match_twosided)
             matched_pts_master = np.asarray(matched_pts_master, dtype=np.float32)
             matched_pts_img = np.asarray(matched_pts_img, dtype=np.float32)
-        else:
-            if feature_match_twosided:        
+        elif descriptorVersion == "sift":
+            if feature_match_twosided:
                 matched_pts_master, matched_pts_img = match_twosidedSift(descriptor_master, descriptor_image, keypoints_master, keypoints_image, "FLANN")    
             else:
                 matchscores = SiftMatchFLANN(descriptor_master, descriptor_image)
                 matched_pts_master = np.float32([keypoints_master[m[0].queryIdx].pt for m in matchscores]).reshape(-1,2)
                 matched_pts_img = np.float32([keypoints_image[m[0].trainIdx].pt for m in matchscores]).reshape(-1,2)
+        elif descriptorVersion == "akaze":
+            matched_pts_master, matched_pts_img = match_DescriptorsBF_NN(keypoints_master, keypoints_image,
+                                                                         descriptor_master, descriptor_image,
+                                                                         feature_match_twosided)
         
         print('number of matches: ' + str(matched_pts_master.shape[0]))
         
