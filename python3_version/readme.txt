@@ -26,10 +26,10 @@ Running FlowVelo on Windows
 -	Install PyCharm
 -	In PyCharm:
   o	Go to File -> Create New Project…
-      Set location to folder you like
+      Choose location to folder you like
       Set Base interpreter to Python 3.6
   o	Go to File -> Settings 
-      Go to Project:“your selected folder”
+      Go to Project:“your chosen folder”
       •	Go to Project Interpreter
           o	Go to +
           o	Install libraries mentioned in requirements
