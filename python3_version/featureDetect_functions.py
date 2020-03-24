@@ -36,10 +36,10 @@ import photogrammetry_functions as photo_tool
 import draw_functions as draw_tool
 
 def defineFeatureSearchArea(pointCloud, cameraGeometry_interior, cameraGeometry_exterior, plot_results=False,
-                            savePlot=False, dirOut=None, img_name=None):      
+                            savePlot=False, dirOut=None, img_name=None, get3dPointsInImgArea=False):
 
     #project points into depth image
-    xyd_rgb_map = photo_tool.project_pts_into_img(cameraGeometry_exterior, cameraGeometry_interior, pointCloud, False)
+    xyd_rgb_map = photo_tool.project_pts_into_img(cameraGeometry_exterior, cameraGeometry_interior, pointCloud, False, False, get3dPointsInImgArea)
     if xyd_rgb_map is None:
         print('point projection into image failed')
         return
@@ -50,7 +50,7 @@ def defineFeatureSearchArea(pointCloud, cameraGeometry_interior, cameraGeometry_
     if plot_results:
         if pointCloud.shape[1] <= 3:
             print('drawing point cloud to image not possible because rgb info missing')
-        else:
+        elif not get3dPointsInImgArea:
             rgb = xyd_rgb_map[:,3:6] / 256
             fig, ax = plt.subplots()
             ax.scatter(xyd_rgb_map[:,0], -1*xyd_rgb_map[:,1], s=5, edgecolor=None, lw = 0, facecolors=rgb)
@@ -58,27 +58,32 @@ def defineFeatureSearchArea(pointCloud, cameraGeometry_interior, cameraGeometry_
             plt.show()
             plt.close('all')
             del fig, ax
-    
-    xyd = xyd_rgb_map[:,0:3]
 
     if savePlot:
         fig, ax = plt.subplots()
         ax.scatter(xyd_rgb_map[:,0], -1*xyd_rgb_map[:,1], s=5, edgecolor=None, lw = 0)
         plt.title('point cloud in image space')
-        plt.savefig(dirOut+img_name[:-4] + '_PtcldImg.png', dpi=600, pad_inches=0)
+        if get3dPointsInImgArea:
+            plt.savefig(dirOut + '_Contour3DImg.png', dpi=600, pad_inches=0)
+        else:
+            plt.savefig(dirOut+img_name[:-4] + '_PtcldImg.png', dpi=600, pad_inches=0)
         plt.close('all')
         del fig, ax
-    
-    
-    del xyd_rgb_map
-    
+
     #find border coordinates of features search mask (is within image frame and greater negative values)
-    xyd_index = np.asarray(xyd[:,0:2], dtype=np.int)
+    if get3dPointsInImgArea:
+        xyd_index = np.asarray(xyd_rgb_map[:, 0:6], dtype=np.int)
+    else:
+        xyd_index = np.asarray(xyd_rgb_map[:,0:2], dtype=np.int)
+    del xyd_rgb_map
     xyd_index = xyd_index[xyd_index[:,0] < cameraGeometry_interior.resolution_x]
     xyd_index = xyd_index[xyd_index[:,0] > 0]
     xyd_index = xyd_index[xyd_index[:,1] < cameraGeometry_interior.resolution_y]
     xyd_index = xyd_index[xyd_index[:,1] > 0]
-    
+
+    if get3dPointsInImgArea:
+       return xyd_index[:,3:6]
+
     xyd_img = np.zeros((cameraGeometry_interior.resolution_y, cameraGeometry_interior.resolution_x))
     xyd_img = np.uint8(xyd_img)
     xyd_img[xyd_index[:,1], xyd_index[:,0]] = 1
@@ -435,4 +440,30 @@ def LSPIV_features(dirImg, img_name, border_pts, pointDist_x, pointDist_y, saveP
         plot.close('all')
     
     return features
-    
+
+
+def readMaskImg(maskImgName, dirOut, imgName):
+#maskImgName mask file name including directory
+    searchMaskImg = cv2.imread(maskImgName, 0)
+
+    # get contour
+    (cnts, _) = cv2.findContours(searchMaskImg, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    contours = sorted(cnts, key=cv2.contourArea, reverse=True)
+
+    # extract largest contour
+    MaskBorderPts = contours[0]
+    MaskBorderPts = MaskBorderPts.reshape(MaskBorderPts.shape[0], 2)
+
+    imageForContour = cv2.imread(imgName, 0)
+    plt.figure()
+    plt.gray()
+    plt.imshow(imageForContour)
+    plt.plot([p[0] for p in MaskBorderPts],
+             [p[1] for p in MaskBorderPts],
+             marker='o', ms=2, color='none', markeredgecolor='green', markeredgewidth=2)
+    plt.axis('off')
+    plt.savefig(dirOut + 'contourFromMask.png',  dpi=600)
+    plt.close('all')
+
+    return MaskBorderPts
+

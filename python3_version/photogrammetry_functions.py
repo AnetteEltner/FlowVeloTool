@@ -186,11 +186,11 @@ def getExteriorCameraGeometry_solvePNP(gcpImgPts, gcpObjPts, interior_orient, un
     return exteriorApprox_pnp, rot_mat_pnp, position_pnp#, inliers
 
 
-def project_pts_into_img(eor_mat, ior_mat, point_cloud, plot_results=False, neg_x=False):
+def project_pts_into_img(eor_mat, ior_mat, point_cloud, plot_results=False, neg_x=False, keep3Dinfo=False):
     #point cloud including RGB
     #ior_mat from read_aicon_ior
 
-    if point_cloud.shape[1] > 3:
+    if (point_cloud.shape[1] > 3) and (keep3Dinfo == False):
         RGB_included = True
     else:
         RGB_included = False
@@ -208,7 +208,8 @@ def project_pts_into_img(eor_mat, ior_mat, point_cloud, plot_results=False, neg_
 
     if RGB_included:        
         point_cloud = np.hstack((point_cloud[:,0:3], point_cloudRGB)) #reunite transformed point cloud with RGB
-    del point_cloudXYZ
+    elif keep3Dinfo:
+        point_cloud = np.hstack((point_cloud[:,0:3], point_cloudXYZ))
     
     #remove points behind the camera
     df_points = pd.DataFrame(point_cloud)  
@@ -231,6 +232,9 @@ def project_pts_into_img(eor_mat, ior_mat, point_cloud, plot_results=False, neg_
     if RGB_included:
         ptCloud_img = np.hstack((ptCloud_img, point_cloudRGB))
         del point_cloudRGB
+    elif keep3Dinfo:
+        ptCloud_img = np.hstack((ptCloud_img, point_cloudXYZ))
+    del point_cloudXYZ
 
     if plot_results:
         if point_cloud.shape[1] > 3:
@@ -254,6 +258,8 @@ def project_pts_into_img(eor_mat, ior_mat, point_cloud, plot_results=False, neg_
     
     if RGB_included:
         ptCloud_img_px = np.hstack((ptCloud_img_px, ptCloud_img[:,2:6]))
+    elif keep3Dinfo:
+        ptCloud_img_px = np.hstack((ptCloud_img_px, ptCloud_img[:, 2:6]))
     else:
         z_vals = ptCloud_img[:,2]
         ptCloud_img_px = np.hstack((ptCloud_img_px, z_vals.reshape(z_vals.shape[0],1)))
@@ -304,10 +310,13 @@ class camera_interior:
 
 def read_aicon_ior(directory, ior_file=None):
     #read aicon interior geometry in mm
-    if ior_file == None:
-        file_read = open(directory)
-    else:
-        file_read = open(os.path.join(directory, ior_file))
+    try:
+        if ior_file == None:
+            file_read = open(directory)
+        else:
+            file_read = open(os.path.join(directory, ior_file))
+    except Exception as e:
+        print(e)
         
     ior_table = file_read.read().split(' ')      #normals created in CC
     file_read.close()
@@ -378,91 +387,96 @@ def undistort_img_coos(img_pts, interior_orient, mm_val=False):
     ck = -1 * interior_orient.ck
 
     #transform pixel values into mm-measurement
-    if mm_val == False:    
-        img_pts = pixel_to_metric(img_pts, interior_orient.resolution_x, interior_orient.resolution_y, 
+    if mm_val == False:
+        img_pts = pixel_to_metric(img_pts, interior_orient.resolution_x, interior_orient.resolution_y,
                                   interior_orient.sensor_size_x, interior_orient.sensor_size_y)
-        
+
     x_img = img_pts[:,0]
     y_img = img_pts[:,1]
     x_img_1 = img_pts[:,0]
-    y_img_1 = img_pts[:,1]    
-    
-    #start iterative undistortion
-    iteration = 0
-    
-    test_result = [10, 10]
-    
-    try:
-        while np.max(test_result) > 1e-14:            
-            if iteration > 1000:
-                #sys.exit('No solution for un-distortion')
-                print('Undistortion for this point-set failed. Using original points.')
-                
-                break
-            
-            iteration = iteration + 1
-            
-            camCoo_x = x_img
-            camCoo_y = y_img
-            
-            if interior_orient.r0 == 0:
-                x_dash = camCoo_x / (ck)
-                y_dash = camCoo_y / (ck)
-                r2 = x_dash**2 + y_dash**2  #img radius
-            else:
-                x_dash = camCoo_x
-                y_dash = camCoo_y
-                if x_dash.shape[0] < 2:
-                    r2 = np.float(x_dash**2 + y_dash**2)  #img radius
+    y_img_1 = img_pts[:,1]
+
+    distortFree = [interior_orient.A1 == 0, interior_orient.A2 == 0,interior_orient.A3 == 0,
+                    interior_orient.B1 == 0,interior_orient.B2 == 0,
+                    interior_orient.C1 == 0,interior_orient.C2 == 0]
+
+    if not all(distortFree):
+        #start iterative undistortion
+        iteration = 0
+
+        test_result = [10, 10]
+
+        try:
+            while np.max(test_result) > 1e-14:
+                if iteration > 1000:
+                    #sys.exit('No solution for un-distortion')
+                    print('Undistortion for this point-set failed. Using original points.')
+
+                    break
+
+                iteration = iteration + 1
+
+                camCoo_x = x_img
+                camCoo_y = y_img
+
+                if interior_orient.r0 == 0:
+                    x_dash = camCoo_x / (ck)
+                    y_dash = camCoo_y / (ck)
+                    r2 = x_dash**2 + y_dash**2  #img radius
                 else:
-                    r2 = x_dash**2 + y_dash**2
-                r = np.sqrt(r2)  
-                    
-            '''extended Brown model'''        
-            #radial distoriton   
-            if interior_orient.r0 == 0:
-                p1 = ((interior_orient.A3 * r2 + (np.ones(r2.shape[0]) * interior_orient.A2)) * r2 + (np.ones(r2.shape[0]) * interior_orient.A1)) * r2            
-            else:
-                p1 = (interior_orient.A1 * (r**2 - (interior_orient.r0**2)) + interior_orient.A2 * (r**4 - interior_orient.r0**4) + 
-                      interior_orient.A3 * (r**6 - interior_orient.r0**6))
-                
-            dx_rad = x_dash * p1
-            dy_rad = y_dash * p1            
-            
-            #tangential distortion
-            dx_tan = (interior_orient.B1 * (r2 + 2 * x_dash**2)) + 2 * interior_orient.B2 * x_dash * y_dash
-            dy_tan = (interior_orient.B2 * (r2 + 2 * y_dash**2)) + 2 * interior_orient.B1 * x_dash * y_dash           
-            
-            #combined distortion
-            dx = dx_rad + dx_tan
-            dy = dy_rad + dy_tan
-            
-            x_roof = x_dash + dx
-            y_roof = y_dash + dy
-                       
-            #adding up distortion to recent distorted coordinate
-            if interior_orient.r0 == 0:
-                x_img_undistort = np.ones(x_dash.shape[0]) * interior_orient.xh - ck * (np.ones(x_roof.shape[0]) + interior_orient.C1) * x_roof - ck * interior_orient.C2 * y_roof
-                y_img_undistort = np.ones(y_roof.shape[0]) * interior_orient.yh - ck * y_roof
-            else:
-                x_img_undistort = np.ones(x_dash.shape[0]) * interior_orient.xh + (np.ones(x_roof.shape[0]) + interior_orient.C1) * x_roof + interior_orient.C2 * y_roof
-                y_img_undistort = np.ones(y_roof.shape[0]) * interior_orient.yh + y_roof
-                            
-            #subtracting distortion from original coordinate
-            x_img = x_img_1 - (x_img_undistort - x_img)
-            y_img = y_img_1 - (y_img_undistort - y_img)
-            
-            
-            #test result if difference between re-distorted (undistorted) coordinates fit to original img coordinates
-            test_result[0] = np.max(np.abs(x_img_undistort - img_pts[:,0]))
-            test_result[1] = np.max(np.abs(y_img_undistort - img_pts[:,1]))
-    
-    except Exception as e:
-        print(e)
-    
+                    x_dash = camCoo_x
+                    y_dash = camCoo_y
+                    if x_dash.shape[0] < 2:
+                        r2 = np.float(x_dash**2 + y_dash**2)  #img radius
+                    else:
+                        r2 = x_dash**2 + y_dash**2
+                    r = np.sqrt(r2)
+
+                '''extended Brown model'''
+                #radial distoriton
+                if interior_orient.r0 == 0:
+                    p1 = ((interior_orient.A3 * r2 + (np.ones(r2.shape[0]) * interior_orient.A2)) * r2 + (np.ones(r2.shape[0]) * interior_orient.A1)) * r2
+                else:
+                    p1 = (interior_orient.A1 * (r**2 - (interior_orient.r0**2)) + interior_orient.A2 * (r**4 - interior_orient.r0**4) +
+                          interior_orient.A3 * (r**6 - interior_orient.r0**6))
+
+                dx_rad = x_dash * p1
+                dy_rad = y_dash * p1
+
+                #tangential distortion
+                dx_tan = (interior_orient.B1 * (r2 + 2 * x_dash**2)) + 2 * interior_orient.B2 * x_dash * y_dash
+                dy_tan = (interior_orient.B2 * (r2 + 2 * y_dash**2)) + 2 * interior_orient.B1 * x_dash * y_dash
+
+                #combined distortion
+                dx = dx_rad + dx_tan
+                dy = dy_rad + dy_tan
+
+                x_roof = x_dash + dx
+                y_roof = y_dash + dy
+
+                #adding up distortion to recent distorted coordinate
+                if interior_orient.r0 == 0:
+                    x_img_undistort = np.ones(x_dash.shape[0]) * interior_orient.xh - ck * (np.ones(x_roof.shape[0]) + interior_orient.C1) * x_roof - ck * interior_orient.C2 * y_roof
+                    y_img_undistort = np.ones(y_roof.shape[0]) * interior_orient.yh - ck * y_roof
+                else:
+                    x_img_undistort = np.ones(x_dash.shape[0]) * interior_orient.xh + (np.ones(x_roof.shape[0]) + interior_orient.C1) * x_roof + interior_orient.C2 * y_roof
+                    y_img_undistort = np.ones(y_roof.shape[0]) * interior_orient.yh + y_roof
+
+                #subtracting distortion from original coordinate
+                x_img = x_img_1 - (x_img_undistort - x_img)
+                y_img = y_img_1 - (y_img_undistort - y_img)
+
+
+                #test result if difference between re-distorted (undistorted) coordinates fit to original img coordinates
+                test_result[0] = np.max(np.abs(x_img_undistort - img_pts[:,0]))
+                test_result[1] = np.max(np.abs(y_img_undistort - img_pts[:,1]))
+
+        except Exception as e:
+            print(e)
+
     x_undistort = x_img #in mm
     y_undistort = y_img #in mm
-        
+
     x_undistort = x_undistort.reshape(x_undistort.shape[0],1)
     y_undistort = y_undistort.reshape(y_undistort.shape[0],1)
     img_pts_undist = np.hstack((x_undistort, y_undistort))
@@ -748,7 +762,7 @@ def rot_Matrix(omega,phi,kappa,unit='grad'):        #radians
         kappa = kappa * (math.pi/180)
     
     # radian    
-    elif unit == 'rad':
+    elif unit == 'radians':
         omega = omega
         phi = phi
         kappa = kappa

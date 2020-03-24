@@ -527,10 +527,10 @@ class FlowVeloTool:
         
         self.yAddText = self.yAddText + 20
         Label(frame2, text="Minimum count features [%]: ").place(x=10, y=self.yAddText)
-        self.minimumTrackedFeatures = tk.DoubleVar()
-        self.minimumTrackedFeatures_Param = Entry(frame2, textvariable=self.minimumTrackedFeatures, font=("Helvetica", 10, 'italic'))
-        self.minimumTrackedFeatures_Param.place(x=self.xText, y=self.yAddText, width=75, height=20)
-        self.minimumTrackedFeatures.set(66)   
+        self.minTrackedFeatures = tk.DoubleVar()
+        self.minTrackedFeatures_Param = Entry(frame2, textvariable=self.minTrackedFeatures, font=("Helvetica", 10, 'italic'))
+        self.minTrackedFeatures_Param.place(x=self.xText, y=self.yAddText, width=75, height=20)
+        self.minTrackedFeatures.set(66)
         
         self.yAddText = self.yAddText + 20
         Label(frame2, text="Minimum track distance [px]: ").place(x=10, y=self.yAddText)
@@ -691,8 +691,8 @@ class FlowVeloTool:
             self.FT_forNthNberFrames.set(1)
             self.pointDistX_Param.config(state = 'normal')
             self.pointDistY_Param.config(state = 'normal')
-            self.minimumTrackedFeatures.set(0)
-            self.minimumTrackedFeatures_Param.config(stat = 'disabled') 
+            self.minTrackedFeatures.set(0)
+            self.minTrackedFeatures_Param.config(stat = 'disabled')
             self.ptv.set(False)            
         else:
             self.maxFtNbr_FD_Param.config(state = 'normal')
@@ -702,9 +702,9 @@ class FlowVeloTool:
             self.sensitiveFD_Param.config(stat = 'normal')
             self.FT_forNthNberFrames_Param.config(stat = 'normal')
             self.pointDistX_Param.config(state = 'disabled')
-            self.pointDistY_Param.config(state = 'disabled') 
-            self.minimumTrackedFeatures_Param.config(stat = 'normal')
-            self.minimumTrackedFeatures.set(66)
+            self.pointDistY_Param.config(state = 'disabled')
+            self.minTrackedFeatures_Param.config(stat = 'normal')
+            self.minTrackedFeatures.set(66)
             self.ptv.set(True)
 
     def checkPTV(self):
@@ -718,8 +718,8 @@ class FlowVeloTool:
             self.FT_forNthNberFrames.set(1)
             self.pointDistX_Param.config(state = 'normal')
             self.pointDistY_Param.config(state = 'normal')
-            self.minimumTrackedFeatures.set(0)
-            self.minimumTrackedFeatures_Param.config(stat = 'disabled')             
+            self.minTrackedFeatures.set(0)
+            self.minTrackedFeatures_Param.config(stat = 'disabled')
             self.lspiv.set(True)        
         else:
             self.maxFtNbr_FD_Param.config(state = 'normal')
@@ -731,8 +731,8 @@ class FlowVeloTool:
             self.FT_forNthNberFrames.set(20)
             self.pointDistX_Param.config(state = 'disabled')
             self.pointDistY_Param.config(state = 'disabled')
-            self.minimumTrackedFeatures_Param.config(stat = 'normal')
-            self.minimumTrackedFeatures.set(66)
+            self.minTrackedFeatures_Param.config(stat = 'normal')
+            self.minTrackedFeatures.set(66)
             self.lspiv.set(False)                     
 
     def checkLK(self):
@@ -895,8 +895,7 @@ class FlowVeloTool:
         print("video converted to frames")
                                          
     def select_imgName(self):
-       imgName = tk.filedialog.askopenfilename(title='Image to draw velocity tracks for visualisation',
-                                               filetypes=[('Video file (*.txt)', '*.txt')], initialdir=os.getcwd())
+       imgName = tk.filedialog.askopenfilename(title='Image to draw velocity tracks for visualisation', initialdir=os.getcwd())
        if not imgName:
            self.img_name.set("")
        else:
@@ -935,8 +934,7 @@ class FlowVeloTool:
            self.ptCloud_file.set(ptClFile)    
            
     def select_AoIFile(self):
-       aoiFile = tk.filedialog.askopenfilename(title='Set file with AoI extent coordinates (xy, image space)',
-                                              filetypes=[('Text file (*.txt)', '*.txt')],initialdir=os.getcwd())
+       aoiFile = tk.filedialog.askopenfilename(title='Select image with masked AoI area', initialdir=os.getcwd())
        if not aoiFile:
            self.AoI_file.set("")
        else:
@@ -979,7 +977,7 @@ class FlowVeloTool:
                        'FDnthFrame ' + str(self.FD_everyIthFrame.get()),
                        'FTnFrames ' + str(self.FT_forNthNberFrames.get()),
                        'FTevernFrames ' + str(self.TrackEveryNthFrame.get()),
-                       'minCountFeat ' + str(self.minimumTrackedFeatures.get()),
+                       'minCountFeat ' + str(self.minTrackedFeatures.get()),
                        'minTrackDist ' + str(self.minDistance_px.get()),
                        'maxTrackDist ' + str(self.maxDistance_px.get()),
                        'Steady ' + str(self.threshAngleSteadiness.get()),
@@ -1045,7 +1043,7 @@ class FlowVeloTool:
         self.FD_everyIthFrame.set(listParams.iloc[27,1])
         self.FT_forNthNberFrames.set(listParams.iloc[28,1])
         self.TrackEveryNthFrame.set(listParams.iloc[29,1])
-        self.minimumTrackedFeatures.set(listParams.iloc[30,1])
+        self.minTrackedFeatures.set(listParams.iloc[30,1])
         self.minDistance_px.set(listParams.iloc[31,1])
         self.maxDistance_px.set(listParams.iloc[32,1])
         self.threshAngleSteadiness.set(listParams.iloc[33,1])
@@ -1212,8 +1210,8 @@ class FlowVeloTool:
         veloStdThresh = self.veloStdThresh.get()
         minDistance_px = self.minDistance_px.get()   #in pixel
         maxDistance_px = self.maxDistance_px.get()
-        minimumTrackedFeatures = self.minimumTrackedFeatures.get()
-        minimumTrackedFeatures = np.int(FT_forNthNberFrames*(minimumTrackedFeatures/100)/TrackEveryNthFrame)
+        minTrackedFeatures = self.minTrackedFeatures.get()
+        minTrackedFeatures = np.int(FT_forNthNberFrames*(minTrackedFeatures/100)/TrackEveryNthFrame)
 
 
         '''-------read data and prepare for following processing-------'''        
@@ -1232,17 +1230,19 @@ class FlowVeloTool:
             #parameters search area definition                            
             if not self.importAoIextent.get():
                 ptCloud_file = self.ptCloud_file.get()
+                imgContourDraw = None
 
                 AoI_file = None
                 
                 try:
-                    ptCloud = np.asarray(pd.read_table(ptCloud_file, header=None, delimiter=',')) #read point cloud
+                    ptCloud = np.asarray(pd.read_table(ptCloud_file, header=None)) #read point cloud    , delimiter=','
                 except:
                     print('failed reading point cloud file')
                 
             else:
                 ptCloud = []
                 AoI_file = self.AoI_file.get()
+                imgContourDraw = img_name
 
         else:
             self.importAoIextent.set(True)
@@ -1253,6 +1253,7 @@ class FlowVeloTool:
             waterlevel_pt = np.nan
             waterlevel_buffer = np.nan              
             AoI_file = self.AoI_file.get()
+            imgContourDraw = img_name
 
         try:
             interior_orient = photogrF.read_aicon_ior(ior_file) #read interior orientation from file (aicon)   
@@ -1284,7 +1285,7 @@ class FlowVeloTool:
 
         '''define search area for features'''
         searchMask = ptv.searchMask(waterlevel_pt, waterlevel_buffer, AoI_file, ptCloud, unit_gcp, interior_orient,
-                                    eor_mat, savePlotData, directoryOutput, img_list, self.importAoIextent.get())
+                                    eor_mat, savePlotData, directoryOutput, img_list, self.importAoIextent.get(), imgContourDraw)
         
         
         '''-------perform feature detection-------'''
@@ -1305,7 +1306,7 @@ class FlowVeloTool:
                 featuresToTrack, first_loop, feature_ID_max = ptv.FeatureDetectionLSPIV(dir_imgs, img_list, frameCount, pointDistX, pointDistY, searchMask, 
                                                                                         FD_everyIthFrame, savePlotData, directoryOutput, first_loop, None)
                 
-            while frameCount < lenLoop:
+            while frameCount <= lenLoop:
                 
                 if frameCount % FD_everyIthFrame == 0:
                     
@@ -1356,7 +1357,7 @@ class FlowVeloTool:
                            nbr_features_maxdist,minimumTrackedFeatures,steady_angle, 
                            nbr_features_steady,range_angle, nbr_features_rangeangle, 
                            flowdir_angle,nbr_features_mainflowdir] = ptv.FilterTracks(trackedFeaturesOutput_undist, img_name, directoryOutput,
-                                                                                      minDistance_px, maxDistance_px, minimumTrackedFeatures, 
+                                                                                      minDistance_px, maxDistance_px, minTrackedFeatures,
                                                                                       threshAngleSteadiness, threshAngleRange,
                                                                                       binNbrMainflowdirection, MainFlowAngleBuffer, self.lspiv.get())
 
@@ -1368,7 +1369,7 @@ class FlowVeloTool:
 
         '''-------transform img measurements into object space-------'''
         if not self.stayImgSpace.get():
-            ptv.TracksPx_to_TracksMetric(filteredFeatures, minimumTrackedFeatures, interior_orient, eor_mat, unit_gcp,
+            ptv.TracksPx_to_TracksMetric(filteredFeatures, interior_orient, eor_mat, unit_gcp,
                                          frame_rate_cam, TrackEveryNthFrame, waterlevel_pt, directoryOutput, img_name, 
                                          veloStdThresh, self.lspiv.get(), self.veloFilterSize.get(), searchMask)
             self.printTxt('------------------------------------------\n'
@@ -1389,7 +1390,7 @@ class FlowVeloTool:
                                      ['TrackEveryNthFrame: ',TrackEveryNthFrame],['frame_rate_cam: ',frame_rate_cam],
                                      ['minDistance_px: ',minDistance_px],['nbr features min dist: ',nbr_features_mindist],
                                      ['maxDistance_px: ',maxDistance_px],['nbr features max dist: ',nbr_features_maxdist],
-                                     ['minimumTrackedFeatures: ',minimumTrackedFeatures],
+                                     ['minTrackedFeatures: ',minTrackedFeatures],['minimumTrackedFeatures: ',minimumTrackedFeatures],
                                      ['threshAngleSteadiness: ',threshAngleSteadiness],['nbr features steadyness: ', nbr_features_steady],['average angle steadiness: ', steady_angle],
                                      ['threshAngleRange: ',threshAngleRange],['nbr features angle range: ',nbr_features_rangeangle],['average range angle: ', range_angle],
                                      ['binNbrMainflowdirection: ',binNbrMainflowdirection],['MainFlowAngleBuffer: ',MainFlowAngleBuffer],
@@ -1403,7 +1404,7 @@ class FlowVeloTool:
             log_file_writer.writerow([['frame_rate_cam: ',frame_rate_cam],
                                      ['minDistance_px: ',minDistance_px],['nbr features min dist: ',nbr_features_mindist],
                                      ['maxDistance_px: ',maxDistance_px],['nbr features max dist: ',nbr_features_maxdist],
-                                     ['minimumTrackedFeatures: ',minimumTrackedFeatures],
+                                     ['minTrackedFeatures: ',minTrackedFeatures],['minimumTrackedFeatures: ',minimumTrackedFeatures],
                                      ['threshAngleSteadiness: ',threshAngleSteadiness],['nbr features steadyness: ', nbr_features_steady],['average angle steadiness: ', steady_angle],
                                      ['threshAngleRange: ',threshAngleRange],['nbr features angle range: ',nbr_features_rangeangle],['average range angle: ', range_angle],
                                      ['binNbrMainflowdirection: ',binNbrMainflowdirection],['MainFlowAngleBuffer: ',MainFlowAngleBuffer],
@@ -1420,7 +1421,7 @@ class FlowVeloTool:
                                      ['frame_rate_cam: ',frame_rate_cam],
                                      ['minDistance_px: ',minDistance_px],['nbr features min dist: ',nbr_features_mindist],
                                      ['maxDistance_px: ',maxDistance_px],['nbr features max dist: ',nbr_features_maxdist],
-                                     ['minimumTrackedFeatures: ',minimumTrackedFeatures],
+                                     ['minTrackedFeatures: ',minTrackedFeatures],['minimumTrackedFeatures: ',minimumTrackedFeatures],
                                      ['threshAngleSteadiness: ',threshAngleSteadiness],['nbr features steadyness: ', nbr_features_steady],['average angle steadiness: ', steady_angle],
                                      ['threshAngleRange: ',threshAngleRange],['nbr features angle range: ',nbr_features_rangeangle],['average range angle: ', range_angle],
                                      ['binNbrMainflowdirection: ',binNbrMainflowdirection],['MainFlowAngleBuffer: ',MainFlowAngleBuffer],
@@ -1440,7 +1441,7 @@ class FlowVeloTool:
                                      ['TrackEveryNthFrame: ',TrackEveryNthFrame],['frame_rate_cam: ',frame_rate_cam],
                                      ['minDistance_px: ',minDistance_px],['nbr features min dist: ',nbr_features_mindist],
                                      ['maxDistance_px: ',maxDistance_px],['nbr features max dist: ',nbr_features_maxdist],
-                                     ['minimumTrackedFeatures: ',minimumTrackedFeatures],
+                                     ['minTrackedFeatures: ',minTrackedFeatures],['minimumTrackedFeatures: ',minimumTrackedFeatures],
                                      ['threshAngleSteadiness: ',threshAngleSteadiness],['nbr features steadyness: ', nbr_features_steady],['average angle steadiness: ', steady_angle],
                                      ['threshAngleRange: ',threshAngleRange],['nbr features angle range: ',nbr_features_rangeangle],['average range angle: ', range_angle],
                                      ['binNbrMainflowdirection: ',binNbrMainflowdirection],['MainFlowAngleBuffer: ',MainFlowAngleBuffer],
