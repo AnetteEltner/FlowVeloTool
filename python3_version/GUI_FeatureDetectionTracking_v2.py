@@ -55,7 +55,7 @@ import photogrammetry_functions as photogrF
 import input_output_functions as ioF
 import PTV_functions as ptv
 
-import tkinter.filedialog 
+import tkinter.filedialog
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 from ttk import *
@@ -195,11 +195,9 @@ class FlowVeloTool:
         self.yAddText = self.yAddText + 50
         Label(frame, text="Data input", font=("Courier", 10)).place(x=10, y=self.yAddText)
 
-        self.VidChoice = tk.BooleanVar()
-        self.VidChoice.set(False)
-        self.VidChoiceBut = tk.Checkbutton(frame, text = "Convert video to frames", font=("Helvetica", 10),
-                                              variable=self.VidChoice, command = lambda:self.VideoFileToFrames())
-        self.VidChoiceBut.place(x=self.xText, y=self.yAddText - 10)
+        Label(frame, text="Convert video to frames", font=("Helvetica", 10)).place(x=self.xText + 27, y=self.yAddText)
+        self.VidChoiceBut = Button(frame, text='o', command=lambda: self.VideoFileToFrames())
+        self.VidChoiceBut.place(x=self.xText + 5, y=self.yAddText, width=15, height=15)
 
         self.yAddText = self.yAddText + 20
         Label(frame, text="Output directory: ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
