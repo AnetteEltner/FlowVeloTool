@@ -1233,7 +1233,7 @@ class FlowVeloTool:
                 AoI_file = None
                 
                 try:
-                    ptCloud = np.asarray(pd.read_table(ptCloud_file, header=None)) #read point cloud    , delimiter=','
+                    ptCloud = np.asarray(pd.read_table(ptCloud_file, header=None, delimiter=',')) #read point cloud    , delimiter=','
                 except:
                     print('failed reading point cloud file')
                 
