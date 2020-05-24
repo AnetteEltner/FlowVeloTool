@@ -98,7 +98,7 @@ class FlowVeloTool:
         self.coregist_kpnbr_Param.config(state='disabled')
 
         self.yAddText = self.yAddText + 20
-        Label(frame4, text="Octave level (AKAZE): ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
+        Label(frame4, text="Detector response threshold (AKAZE): ", font=("Helvetica", 10)).place(x=10, y=self.yAddText)
         self.thresholdDetector = tk.DoubleVar()
         self.thresholdDetector_Param = Entry(frame4, textvariable=self.thresholdDetector,
                                              font=("Helvetica", 10, 'italic'))
@@ -1233,7 +1233,7 @@ class FlowVeloTool:
                 AoI_file = None
                 
                 try:
-                    ptCloud = np.asarray(pd.read_table(ptCloud_file, header=None, delimiter=',')) #read point cloud    , delimiter=','
+                    ptCloud = np.asarray(pd.read_table(ptCloud_file, header=None)) #read point cloud    , delimiter=','
                 except:
                     print('failed reading point cloud file')
                 
