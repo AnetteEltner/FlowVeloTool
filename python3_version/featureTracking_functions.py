@@ -66,10 +66,6 @@ def lsm_matching(patch, lsm_search, pointAdjusted, lsm_buffer, thresh=0.001):
     
     #approximation
     U = np.asarray([np.int(lsm_search.shape[1]/2), np.int(lsm_search.shape[0]/2)], dtype=np.float)
-#     #tx, ty, alpha
-#     U = np.asarray([np.int(lsm_search.shape[1]/2), np.int(lsm_search.shape[0]/2),
-#                     np.float(0)], dtype=np.float)
-     
     A = np.zeros((n, U.shape[0]))
     l = np.zeros((n, 1))
     
@@ -93,7 +89,7 @@ def lsm_matching(patch, lsm_search, pointAdjusted, lsm_buffer, thresh=0.001):
                 x2 = x1 + U[0]-p_shift_ini.x + dif_patch_lsm_size_x #shift to coordinate system of lsm_search 
                 y2 = y1 + U[1]-p_shift_ini.y + dif_patch_lsm_size_y
 #                 #rotation and translation
-#                 x2 = x1 * np.cos(U[2]) - y1 * np.sin(U[2]) + U[0]-p_shift_ini.x + dif_patch_lsm_size_x 
+#                 x2 = x1 * np.cos(U[2]) - y1 * np.sin(U[2]) + U[0]-p_shift_ini.x + dif_patch_lsm_size_x
 #                 y2 = x1 * np.sin(U[2]) + y1 * np.cos(U[2]) + U[1]-p_shift_ini.y + dif_patch_lsm_size_y
                 
                 g1 = patch[int(y1),int(x1)]
@@ -111,11 +107,11 @@ def lsm_matching(patch, lsm_search, pointAdjusted, lsm_buffer, thresh=0.001):
                 #translation y
                 gy1 = interopolateGreyvalue(lsm_search, x2, y2-add_val)
                 gy2 = interopolateGreyvalue(lsm_search, x2, y2+add_val)
-                
+
 #                 #rotation
 #                 galpha1 = interopolateGreyvalue(lsm_search, x2, y2, 1)
 #                 galpha2 = interopolateGreyvalue(lsm_search, x2, y2, -1)
-                
+
                 plt.close('all')
     
                 if g1 < 0 or g2 < 0 or gx1 < 0 or gy1 < 0 or gx2 < 0 or gy2 < 0:
@@ -141,7 +137,6 @@ def lsm_matching(patch, lsm_search, pointAdjusted, lsm_buffer, thresh=0.001):
         for j in range(U.shape[0]):
             U[j] = U[j] + dx_lsm[j]
             SUM = SUM + np.abs(dx_lsm[j])
-#         print SUM, U, dx_lsm
         
         #stops the iteration if sum of additions is very small
         if (SUM < thresh):             
@@ -324,32 +319,6 @@ def crossCorrelation(SearchImg, PatchImg, xyLowerLeft, illustrate=False, subpixe
     del min_val, min_loc
         
     if subpixel:
-#         zoom_factor = 10.0
-#         SearchImg_new, xyLowerLeft_upscale = getTemplate(SearchImg, [match_position_x, match_position_y], PatchImg.shape[0]+2, PatchImg.shape[1]+2)
-#         SearchImg_upscale = ndimage.zoom(SearchImg_new, zoom_factor)
-#         PatchImg_upscale = ndimage.zoom(PatchImg, zoom_factor)
-#         res_upscale = cv2.matchTemplate(SearchImg_upscale, PatchImg_upscale, cv2.TM_CCORR_NORMED)
-#         min_val, max_val, min_loc, max_loc_upscale = cv2.minMaxLoc(res_upscale) #min_loc for TM_SQDIFF
-#         match_position_x_upscale = np.float((max_loc_upscale[0] + PatchImg_upscale.shape[1]/2)) / zoom_factor
-#         match_position_y_upscale = np.float((max_loc_upscale[1] + PatchImg_upscale.shape[0]/2)) / zoom_factor 
-#         
-#         match_position_x = match_position_x_upscale + xyLowerLeft_upscale[0]
-#         match_position_y = match_position_y_upscale + xyLowerLeft_upscale[1]
-#         
-#         if illustrate:        
-#             plt.subplot(131),plt.imshow(res_upscale,cmap = 'gray')
-#             plt.title('Matching Result'), plt.xticks([]), plt.yticks([])
-#             plt.plot(match_position_x_upscale*zoom_factor-PatchImg_upscale.shape[1]/2, 
-#                      match_position_y_upscale*zoom_factor-PatchImg_upscale.shape[0]/2, "r.", markersize=10)
-#             plt.subplot(132),plt.imshow(SearchImg_upscale,cmap = 'gray')
-#             plt.title('Detected Point'), plt.xticks([]), plt.yticks([])    
-#             plt.plot(match_position_x_upscale*zoom_factor-3, match_position_y_upscale*zoom_factor+3, "r.", markersize=10)
-#             plt.subplot(133),plt.imshow(PatchImg_upscale,cmap = 'gray')
-#             plt.title('Template'), plt.xticks([]), plt.yticks([])
-#             plt.show()        
-#             plt.waitforbuttonpress()
-#             plt.cla()
-        
         #perform subpixel matching with template and search area in frequency domain
         SearchImg_32, _ = getTemplate(SearchImg, [match_position_x, match_position_y], PatchImg.shape[0], PatchImg.shape[1])
         SearchImg_32 = np.float32(SearchImg_32)
@@ -375,7 +344,7 @@ def crossCorrelation(SearchImg, PatchImg, xyLowerLeft, illustrate=False, subpixe
     
     del res
         
-    if max_val > 0.9:#998:
+    if max_val > 0.9:
         #keep only NCC results with high correlation values
         xyMatched = np.asarray([match_position_x + xyLowerLeft[0], match_position_y + xyLowerLeft[1]], dtype=np.float32)
         return xyMatched
@@ -420,9 +389,7 @@ def performFeatureTracking(template_size, search_area, initCooTemplate,
         
     try:
         patch, _ = getTemplate(templateImage, initCooTemplate, template_width, template_height, True)
-    except Exception as e:
-#        _, _, exc_tb = sys.exc_info()
-#        print(e, 'line ' + str(exc_tb.tb_lineno))
+    except:
         print('template patch reaches border')
         return 1/0
     
@@ -433,9 +400,7 @@ def performFeatureTracking(template_size, search_area, initCooTemplate,
     try:
         search_area, lowerLeftCoo_lsm_search = getTemplate(searchImage, templateCoo_init_shift, search_area_x, search_area_y, True)
     
-    except Exception as e:
-#        _, _, exc_tb = sys.exc_info()
-#        print(e, 'line ' + str(exc_tb.tb_lineno))
+    except:
         print('search patch reaches border')
         return 1/0
 
@@ -456,9 +421,7 @@ def performFeatureTracking(template_size, search_area, initCooTemplate,
         #perform least square matching (subpixel accuracy possible)
         try:
             lsm_search, lowerLeftCoo_lsm_search = getTemplate(searchImage, CC_xy, search_area_x, search_area_y, True)            
-        except Exception as e:
-#            _, _, exc_tb = sys.exc_info()
-#            print(e, 'line ' + str(exc_tb.tb_lineno))
+        except:
             print('lsm patch reaches border')
             return 1/0
         
@@ -481,9 +444,7 @@ def performFeatureTracking(template_size, search_area, initCooTemplate,
     
             TrackedFeature = np.asarray([result_lsm.x, result_lsm.y])
         
-        except Exception as e:
-#            _, _, exc_tb = sys.exc_info()
-#            print(e, 'line ' + str(exc_tb.tb_lineno))
+        except:
             print('lsm failed')
     
     return TrackedFeature

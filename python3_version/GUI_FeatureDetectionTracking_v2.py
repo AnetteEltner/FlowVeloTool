@@ -1082,7 +1082,7 @@ class FlowVeloTool:
                 
                 image_list_coreg = tk.filedialog.askopenfilenames(title='Open co-registered frames')
                 
-                check_points_forAccCoreg =  tk.filedialog.askopenfilename(title='File with CP coordinates (image space)',
+                check_points_forAccCoreg = tk.filedialog.askopenfilename(title='File with CP coordinates (image space)',
                                                                          filetypes=[('Text file (*.txt)', '*.txt')],initialdir=os.getcwd())
                          
                 failing = False
@@ -1096,11 +1096,12 @@ class FlowVeloTool:
             
         image_list_coreg = sorted(image_list_coreg, key=lambda image: (image[0], image[1]))
         try:
-            img_check_pts = np.asarray(pd.read_table(check_points_forAccCoreg), dtype=np.float32)
+            img_check_pts = pd.read_table(check_points_forAccCoreg, sep=',')
         except:
             print('failed reading file with check points in image space')
         
-        coregF.accuracy_coregistration(image_list_coreg, img_check_pts, self.template_size_coregAcc.get(), directoryOutput_coreg_acc)        
+        coregF.accuracy_coregistration(image_list_coreg, img_check_pts,
+                                       directoryOutput_coreg_acc, self.template_size_coregAcc.get())
         
         print('Accuracy assessment co-registration finished.')               
         
@@ -1233,7 +1234,7 @@ class FlowVeloTool:
                 AoI_file = None
                 
                 try:
-                    ptCloud = np.asarray(pd.read_table(ptCloud_file, header=None)) #read point cloud    , delimiter=','
+                    ptCloud = np.asarray(pd.read_table(ptCloud_file, header=None, delimiter=',')) #read point cloud    , delimiter=','
                 except:
                     print('failed reading point cloud file')
                 
@@ -1458,16 +1459,8 @@ class FlowVeloTool:
 def main():        
 
     root = tk.Tk()
-
-    # size_width = str(root.winfo_screenwidth())
-    # size_height = str(root.winfo_screenheight())
-    # root.geometry(size_width + "x" + size_height)
-    
-    app = FlowVeloTool(root)   
-    
+    app = FlowVeloTool(root)
     root.mainloop()
-    
-    #root.destroy() # optional; see description below        
 
 
 if __name__ == "__main__":

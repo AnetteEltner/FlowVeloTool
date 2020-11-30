@@ -49,12 +49,6 @@ def getExteriorCameraGeometry(gcpImgPts, gcpObjPts, interior_orient, unit_gcp=1,
             
             #perform estimation with openCV when no pose estimates (initial values) are given
             exteriorApprox_pnp, rot_mat_pnp, position_pnp = getExteriorCameraGeometry_solvePNP(gcpImgPts_pix, gcpObjPts, interior_orient, unit_gcp)
-#            exteriorApprox_pnp, rot_mat_pnp, position_pnp, inlier_ids = getExteriorCameraGeometry_solvePNP(gcpImgPts_pix, gcpObjPts, interior_orient, unit_gcp) #if solvepnp_RANSAC() is used
-        #     #keep only inlier GCPs for further improvement of initial RANSAC values with adjustment
-        #     gcpImgPts_filtered = []
-        #     for inlier in inlier_ids:
-        #         gcpImgPts_filtered.append(gcpImgPts[np.int(inlier),:])
-        #     gcpImgPts = np.asarray(gcpImgPts_filtered)
 
         except Exception as e:
             _, _, exc_tb = sys.exc_info()
@@ -157,23 +151,14 @@ def getExteriorCameraGeometry_solvePNP(gcpImgPts, gcpObjPts, interior_orient, un
     yh = interior_orient.resolution_y / 2
     cam_file_forOpenCV = [ck, xh, yh, 0, 0, 0, 0, 0]
     
-    #get camera pose 
-#    rot_mat, position, inliers = getPoseWithOpenCV(gcpImgPts, gcpObjPts, cam_file_forOpenCV) #if solvenpnp_RANSAC() used
-#    inliers = np.asarray(inliers).flatten()
+    #get camera pose
     rot_mat, position = getPoseWithOpenCV(gcpImgPts, gcpObjPts, cam_file_forOpenCV)
 
     rot_mat_pnp = np.zeros((rot_mat.shape[0], rot_mat.shape[1]))
     rot_mat_pnp[:] = rot_mat[:]
     position_pnp = np.zeros((position.shape[0], position.shape[1]))
     position_pnp[:] = position[:]
-    
-    # try:
-    #     print('nbr of GCP outliers after RANSAC: ' + str(gcpImgPts.shape[0] - inliers.shape[0]))
-    #     print('inlier point ids for RANSAC: ' + str(gcpImgPts[inliers,0]))
-    # except Exception as error:
-    #     print(error)
-    #     print('could not calculate outlier number')
-    
+
     #convert rotation matrix into angles
     multipl_array = np.array([[1,0,0],[0,-1,0],[0,0,1]])  
     rot_matrix = -1 * (np.matrix(rot_mat) * np.matrix(multipl_array))
@@ -409,9 +394,7 @@ def undistort_img_coos(img_pts, interior_orient, mm_val=False):
         try:
             while np.max(test_result) > 1e-14:
                 if iteration > 1000:
-                    #sys.exit('No solution for un-distortion')
                     print('Undistortion for this point-set failed. Using original points.')
-
                     break
 
                 iteration = iteration + 1
@@ -665,9 +648,7 @@ def resection(camera_interior, camera_exterior, ImgCoos_GCPCoos, e=0.0001, plot_
             dx = Q * L  #N\L
             v  = np.matrix(A) * dx - np.matrix(l)
             s0 = np.sqrt((v.T * v) / (A.shape[0] - A.shape[1])) # sigma-0
-            
-#             if iteration == 0:
-#                 print(v)
+
         
             ''''adds corrections to the values of unknowns'''
             SUM = 0
@@ -699,11 +680,6 @@ def resection(camera_interior, camera_exterior, ImgCoos_GCPCoos, e=0.0001, plot_
             return np.asarray([[-9999],[0]]), s0, -9999
         
 
-#     '''Output per iteration (check on convergence)'''
-#     print('Iteration ' + str(iteration))
-#     print('  Sigma-0: ' + str(s0) + ' mm')
-#     print('  Sum of additions: ' + str(SUM))
-    
     if plot_results:
         '''Generation of vector field (residuals of image coordinates)'''
         #splits the x- and y-coordinates in two different vectors
@@ -837,7 +813,6 @@ def getPoseWithOpenCV(img_pts, gcp_pts, cam_file, plot_results=False, image=None
     #solve for exterior orientation
     img_pts = np.ascontiguousarray(img_pts[:,:2]).reshape((img_pts.shape[0],1,2)) #new for CV3
 
-    #_, rvec_solved, tvec_solved, inliers = cv2.solvePnPRansac(gcp_coos, img_pts, camMatrix, distCoeff)#, reprojectionError) # iterationsCount=2000, reprojectionError=5
     _, rvec_solved, tvec_solved = cv2.solvePnP(gcp_coos, img_pts, camMatrix, distCoeff, cv2.SOLVEPNP_EPNP)  #, useExtrinsicGuess=False)
 
     '''convert to angles and XYZ'''
@@ -852,7 +827,7 @@ def getPoseWithOpenCV(img_pts, gcp_pts, cam_file, plot_results=False, image=None
 #     omega, phi, kappa = rot_matrix_to_euler(rot_matrix)
 #     rotation = np.asarray([omega, phi, kappa])
         
-    return rot_matrix, position#, inliers
+    return rot_matrix, position
 
 
 def NN_pts(reference_pts, target_pts, max_NN_dist=1, plot_results=False,
@@ -864,8 +839,6 @@ def NN_pts(reference_pts, target_pts, max_NN_dist=1, plot_results=False,
 
     #define kd-tree
     mytree = scipy.spatial.cKDTree(reference_pts_xy_int)
-#    dist, indexes = mytree.query(points_list)
-#    closest_ptFromPtCloud = reference_pts[indexes,0:3]
     
     #search for nearest neighbour
     indexes = mytree.query_ball_point(points_list, max_NN_dist)   #find points within specific distance (here in pixels)
@@ -918,7 +891,7 @@ def NN_pts(reference_pts, target_pts, max_NN_dist=1, plot_results=False,
 
     print('NN skipped: ' + str(NN_skip))
 
-    return NN_points    #, np.min(dist_to_pz_xy[:,2]), np.max(dist_to_pz_xy[:,2])
+    return NN_points
     
     
 def imgDepthPts_to_objSpace(img_pts_xyz, eor_mat, x_resolution, y_resolution, pixel_size, ck):

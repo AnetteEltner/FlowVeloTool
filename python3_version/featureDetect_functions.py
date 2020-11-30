@@ -94,12 +94,9 @@ def defineFeatureSearchArea(pointCloud, cameraGeometry_interior, cameraGeometry_
     #perform closing to get closed water surface area
     kernel = np.ones((20,20),np.uint8)
     xyd_img_close = cv2.morphologyEx(xyd_img, cv2.MORPH_CLOSE, kernel)    
-    
-#     #invert image to get contour
-#     xyd_img_close_inverted = cv2.bitwise_not(xyd_img_close)
-    
+
     #get contour
-    (cnts, _) = cv2.findContours(xyd_img_close, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)  #_, cnts, _
+    (cnts, _) = cv2.findContours(xyd_img_close, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     del xyd_img_close
     contours = sorted(cnts, key = cv2.contourArea, reverse = True)
     
@@ -166,10 +163,6 @@ def featureDetection(dirImg, img_name, border_pts, minimum_thresh=100, neighbor_
     
     
     '''Cluster Analysis (looking for nearest neighbors using kdtree)'''
-    #FtAboveMinThresh_x = np.asarray(FtAboveMinThresh[:,1], dtype=np.int).reshape(FtAboveMinThresh.shape[0],1)
-    #FtAboveMinThresh_y = np.asarray(FtAboveMinThresh[:,0], dtype=np.int).reshape(FtAboveMinThresh.shape[0],1)
-    #FtAboveMinThresh_forCluster = np.hstack((FtAboveMinThresh_x, FtAboveMinThresh_y))
-    
     kdtree = KDTree(FtAboveMinThresh[:,0:2], leaf_size=2)  
     neighbors = []
     max_neighbors = 0
@@ -402,7 +395,6 @@ def raster_clip(ras_to_clip, geotrans, polygon, visualize=False, flipped_rows=Fa
         del mask
         
         if visualize:
-            #plt.imshow(ras_to_clip)
             plt.imshow(ras_clipped)
             plt.show()
             plt.close('all')

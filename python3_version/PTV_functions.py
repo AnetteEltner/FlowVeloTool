@@ -89,7 +89,6 @@ def searchMask(waterlevel_pt, waterlevel_buffer, AoI_file, ptCloud, unit_gcp, in
     #use search mask from file
     if preDefAoI:
         try:
-            #searchMask = pd.read_table(AoI_file, header=None)   #, delimiter=','
             searchMask = detectF.readMaskImg(AoI_file, directoryOutput, imgContourDraw)
         except:
             print('reading search mask file failed')
@@ -485,10 +484,7 @@ def TracksPx_to_TracksMetric(filteredFeatures, interior_orient, eor_mat, unit_gc
         filteredFeaturesPIV.loc[:,'threshNeg'] = filteredFeaturesPIV.veloMean - veloStdThresh * filteredFeaturesPIV.veloStd
         filteredFeaturesPIV = filteredFeaturesPIV[filteredFeaturesPIV.velo < filteredFeaturesPIV.threshPos]
         filteredFeaturesPIV = filteredFeaturesPIV[filteredFeaturesPIV.velo > filteredFeaturesPIV.threshNeg]     
-        
-        #also filter based on direction
-        #...
-        
+
         filteredFeaturesPIV_grouped = filteredFeaturesPIV.groupby('id', as_index=False).mean()
         filteredFeaturesCount = filteredFeaturesPIV.groupby('id', as_index=False).count()
         filteredFeaturesPIV_grouped.loc[:,'count'] = filteredFeaturesCount.loc[:,'velo']
