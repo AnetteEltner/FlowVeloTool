@@ -56,7 +56,7 @@ def assignPtsBasedOnID(pts1, pts2):
 
 
 def drawPointsToImg(img, points, switchCol=False):
-    fig = plt.figure(frameon=False) #dpi of screen resolution
+    fig = plt.figure(frameon=False)
 
     ax = plt.Axes(fig, [0., 0., 1., 1.])
     fig.add_axes(ax) 
@@ -72,7 +72,7 @@ def drawPointsToImg(img, points, switchCol=False):
                     [p[0] for p in points],
                     marker='o', ms=3, color='none', markeredgecolor='blue', markeredgewidth=1)
      
-    ax.imshow(img, cmap='gray')#, aspect='normal')
+    ax.imshow(img, cmap='gray')
     
     return plt
 
@@ -122,9 +122,7 @@ def draw_tracks(Final_Vals, image, dir_out, outputImgName, variableToDraw, log_n
         image_points = image_points.reset_index(drop=True)        
         
         #set colors
-        jet = plt.get_cmap('Spectral') 
-        # cNorm  = colors.SymLogNorm(linthresh=0.003, linscale=1,
-        #                            vmin=image_points['velo'].min(), vmax=image_points['velo'].max())
+        jet = plt.get_cmap('Spectral')
         if log_norm:
             cNorm  = colors.LogNorm(vmin=image_points[variableToDraw].min(), vmax=image_points[variableToDraw].max())
         else:
@@ -137,12 +135,11 @@ def draw_tracks(Final_Vals, image, dir_out, outputImgName, variableToDraw, log_n
         matplotlib.rc('font', **fontProperties_text)
         
         #draw figure
-        fig = plt.figure(frameon=False) #dpi of screen resolution
+        fig = plt.figure(frameon=False)
         ax = plt.Axes(fig, [0., 0., 1., 1.])
         ax.set_axis_off()
         ax.axis('equal')  
         fig.add_axes(ax)
-    #    ax.plot(image_points['x'], image_points['y'], "g.", markersize=3, markeredgecolor='none')
         
         image_points = image_points.sort_values('id')
         image_points = image_points.reset_index(drop=True)
@@ -163,9 +160,6 @@ def draw_tracks(Final_Vals, image, dir_out, outputImgName, variableToDraw, log_n
                     point_n = point_n + 1
                 
                 except Exception as e:
-#                    print(e)
-#                    print ('skipped point: ' + str(point_n))
-#                    print(xl, yl, arr_x-xl, arr_y-yl)
                     point_n = point_n + 1
      
                 if label_data:            
@@ -181,17 +175,14 @@ def draw_tracks(Final_Vals, image, dir_out, outputImgName, variableToDraw, log_n
                         label_criteria = 1
                     else:
                         label_criteria = 0
-    
-                
-        #ax.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), aspect='normal')
-        ax.imshow(image, cmap = 'gray')#, aspect='normal') 
+
+        ax.imshow(image, cmap = 'gray')
         
         image_points = image_points.sort_values(variableToDraw)
         image_points = image_points.reset_index(drop=True)
-        
-    #    cmap = mcolors.LinearSegmentedColormap.from_list('my_cmap', scalarMap.to_rgba(image_points[variableToDraw]))
-        norm  = mcolors.Normalize(min(image_points[variableToDraw]), max(image_points[variableToDraw]))
-        sm = matplotlib.cm.ScalarMappable(cmap=jet, norm=norm) #cmap=cmap
+
+        norm = mcolors.Normalize(min(image_points[variableToDraw]), max(image_points[variableToDraw]))
+        sm = matplotlib.cm.ScalarMappable(cmap=jet, norm=norm)
         sm.set_array([])
         
         fig.colorbar(sm, fraction=0.1, pad=0, shrink=0.5)
@@ -208,7 +199,6 @@ def draw_points_onto_image(image, image_points, point_id, markSize=2, fontSize=8
 # draw image points into image and label the point id
 # image_points: array with 2 columns
 # point_id: list of point ids in same order as corresponding image_points file; if empty no points labeled
-# dpi from screen resolution
     
     set_markersize = markSize
     
@@ -216,7 +206,7 @@ def draw_points_onto_image(image, image_points, point_id, markSize=2, fontSize=8
                            'family' : 'serif'}
     matplotlib.rc('font', **fontProperties_text)
     
-    fig = plt.figure(frameon=False) #dpi of screen resolution
+    fig = plt.figure(frameon=False)
     
     ax = plt.Axes(fig, [0., 0., 1., 1.])
     ax.set_axis_off()
@@ -232,17 +222,16 @@ def draw_points_onto_image(image, image_points, point_id, markSize=2, fontSize=8
                  [p[1] for p in image_points],
                  marker='o', ms=set_markersize, color='red', markeredgecolor='black', markeredgewidth=1,
                  linestyle=' ')
-               
-    #ax.plot(image_points[:,0], image_points[:,1], "r.", markersize=set_markersize, markeredgecolor='black')
+
     if len(point_id) > 1:
         if not switched:
             for label, xl, yl in zip(point_id, image_points[:,0], image_points[:,1]):
                 ax.annotate(str((label)), xy = (xl, yl), xytext=(xl+5, yl+1), color='blue', **fontProperties_text)
         else:
             for label, xl, yl in zip(point_id, image_points[:,1], image_points[:,0]):
-                ax.annotate(str((label)), xy = (xl, yl), xytext=(xl+5, yl+1), color='blue', **fontProperties_text)           #str(int(label)
+                ax.annotate(str((label)), xy = (xl, yl), xytext=(xl+5, yl+1), color='blue', **fontProperties_text)
 
-    ax.imshow(image, cmap='gray')#, aspect='normal')
+    ax.imshow(image, cmap='gray')
         
     return plt
 
@@ -297,37 +286,17 @@ def draw_tracks_raster(Final_Vals, image, dir_out, outputImgName, variableToDraw
     matplotlib.rc('font', **fontProperties_text)
     
     #draw figure
-    fig = plt.figure(frameon=False) #dpi of screen resolution
+    fig = plt.figure(frameon=False)
     ax = plt.Axes(fig, [0., 0., 1., 1.])
     ax.set_axis_off()
     ax.axis('equal')  
     fig.add_axes(ax)  
 
-#     edgecolor='black'
-#     markeredgewidths=0
-#     markersize=10
     transparency=.8      
     
     #set colors
     jet = plt.get_cmap('plasma') 
 
-    # cNorm  = colors.SymLogNorm(linthresh=0.003, linscale=1,
-    #                            vmin=image_points['velo'].min(), vmax=image_points['velo'].max())
-#     if log_norm:
-#         cNorm  = colors.LogNorm(vmin=image_points[variableToDraw].min(), vmax=image_points[variableToDraw].max())
-#     else:
-#         cNorm  = colors.Normalize(vmin=image_points[variableToDraw].min(), vmax=image_points[variableToDraw].max())
-#     scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=jet)
-       
-    #add points
-#     point_n = 0
-#     while point_n < image_points.shape[0]:
-#         plt.plot(image_points.x.values[point_n], image_points.y[point_n], marker='s', ms=markersize, 
-#                  color=scalarMap.to_rgba(image_points[variableToDraw][point_n]), 
-#                  lw=0, markeredgecolor=edgecolor, markeredgewidth=markeredgewidths, alpha=transparency)
-#         point_n = point_n + 1
-
-    
     array_pts = np.zeros((image.shape[0] / cell_size, image.shape[1] / cell_size))
     array_pts[:] = np.nan
     row_ind = np.asarray(image_points.y.values, dtype=np.int) - 1
@@ -337,20 +306,18 @@ def draw_tracks_raster(Final_Vals, image, dir_out, outputImgName, variableToDraw
     rowcol_ind = rowcol_ind[rowcol_ind[:,1]>=0]
     row_ind = rowcol_ind[0,:]
     col_ind = rowcol_ind[1,:]
-    array_pts[row_ind,col_ind] = image_points.velo.values #pts[:,2].flatten()
+    array_pts[row_ind,col_ind] = image_points.velo.values
 
-    #ax.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), aspect='normal')
-    ax.imshow(image, cmap = 'gray', extent=[0,image.shape[1],0,image.shape[0]])#, aspect='normal') 
+    ax.imshow(image, cmap = 'gray', extent=[0,image.shape[1],0,image.shape[0]])
     
     
     ax.imshow(array_pts, cmap='plasma', extent=[0,image.shape[1],0,image.shape[0]], interpolation='bilinear', alpha=transparency)
     
     image_points = image_points.sort_values(variableToDraw)
     image_points = image_points.reset_index(drop=True)
-    
-#    cmap = mcolors.LinearSegmentedColormap.from_list('my_cmap', scalarMap.to_rgba(image_points[variableToDraw]))
+
     norm  = mcolors.Normalize(min(image_points[variableToDraw]), max(image_points[variableToDraw]))
-    sm = matplotlib.cm.ScalarMappable(cmap=jet, norm=norm) #cmap=cmap
+    sm = matplotlib.cm.ScalarMappable(cmap=jet, norm=norm)
     sm.set_array([])
     
     fig.colorbar(sm, fraction=0.1, pad=0, shrink=0.5)
