@@ -43,7 +43,7 @@ Input data:
 -	Interior geometry of the camera. Minimum information needed is focal length in mm, sensor size in mm and sensor resolution in pixels. There is an example file interiorGeometry.txt in the tutorial data and corresponding explanation of parameters in interiorGeometry_explained.txt.
 -	Image coordinates (id,x,y) of Ground Control Points (GCPs used to estimate camera pose in pixels, starting at the top left corner of the image. There is an example file markersGCPimg.txt in the tutorial data. Locations of GCPs in the image are illustrated in locationGCPs_frame3.jpg. This information is not necessary if the exterior camera geometry is provided directly.
 -	Object space coordinates (ID,X,Y,Z) of GCPs used to estimate camera pose. There is an example file markersGCPobj.txt in the tutorial data. If no GCPs are given it is possible to set the exterior camera geometry directly, if it is known.
--	3D point cloud (X,Y,Z) of area of interest to define search area. There is an example file 3DmodelPointCloud.txt in the tutorial data. If no point cloud is given, it is also possible to import a file containing the image coordinates of the search mask.
+-	3D point cloud (X,Y,Z) of area of interest to define search area. There is an example file 3DmodelPointCloud.txt in the tutorial data. If no point cloud is given, it is also possible to import a binary image file where the water area is masked (i.e. white water area in front of black background).
 -	Water level
 -	Folder with the image/frame sequence
 
