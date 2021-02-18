@@ -57,3 +57,6 @@ https://cloudstore.zih.tu-dresden.de/index.php/s/2XWTnzqCkoOJvkF
 
 For questions please contact: Anette.Eltner@tu-dresden.de
 
+
+How to cite:
+Eltner, A., Sardemann, H., Grundmann, J.: Technical Note: Flow velocity and discharge measurement in rivers using terrestrial and unmanned-aerial-vehicle imagery. Hydrol. Earth Syst. Sci., 24, 1429–1445, 2020
