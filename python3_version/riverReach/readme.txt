@@ -1,6 +1,6 @@
 The FlowVeloTool is needed to run this extension. 
 - First run coregisterToEveryNthFrame.py to create co-registered frames from the video. 
-- Then run FeatureDetectionTracking_riverReach.py to get the velocities.
+- Then, run FeatureDetectionTracking_riverReach.py to get the velocities.
 - Finally, merge the velocity tracks with allTracksToOne.py.
 
 Tutorial data is given here: https://cloudstore.zih.tu-dresden.de/index.php/s/j9PzxwqnmqbfTjF
