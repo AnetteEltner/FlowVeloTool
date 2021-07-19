@@ -8,4 +8,4 @@ Tutorial data is given here: https://cloudstore.zih.tu-dresden.de/index.php/s/j9
 For questions please contact: Anette.Eltner@tu-dresden.de
 
 How to cite:
-Eltner, A., Bertalan, L., Grundmann, J., Perks, M.T., Lotsari, E.: Technical Note: Flow velocity and discharge measurement in rivers using terrestrial and unmanned-aerial-vehicle imagery. Earth Surface Processes and Landforms, 2021 (DOI:10.1002/esp.5205)
+Eltner, A., Bertalan, L., Grundmann, J., Perks, M.T., Lotsari, E.: Hydro-morphological mapping of river reaches using videos captured with unoccupied aerial systems. Earth Surface Processes and Landforms, 2021 (DOI:10.1002/esp.5205)
