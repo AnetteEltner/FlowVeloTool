@@ -1,0 +1,57 @@
+-> results in pixels (in image space):
+
+Tracking_FT_nbrFrames_*_FD_nbrFrames_*.txt - text file with tracked particle information
+- frame (frame in which particle tracked) 
+- id (individual particle identifier)
+- x	(position x in image)
+- y (position y in image)
+
+TracksRaw_px.jpg - corresponding image to Tracking_FT_nbrFrames_*_FD_nbrFrames_*.txt
+
+TracksFiltered_px.txt - filtered tracks in image space
+- id (individual particle identifier)
+- x	(position x in image)
+- y (position y in image)
+- x_tr (tracked position x in image)
+- y_tr (tracked position x in image)
+- dist (traced distance)
+
+TracksFilteredMinCount.jpg - result of minimum count filter
+TracksFilteredMinDist.jpg - result of minimum distance filter
+TracksFilteredMaxDist.jpg - result of maximum distance filter
+TracksFilteredSteady.jpg - result of steadiness filter
+TracksFilteredFlowDir.jpg - result of flow direction filter
+TracksFilteredRangeAngle.jpg - result of flow angle range filter
+
+
+-> scaled results in m/s (in object space):
+
+TracksReferenced_raw_PTV.txt - results after scaling the pixel values of TracksFiltered_px.txt
+- X (position X in object space)
+- Y (position Y in object space)
+- Z (position Z in object space)
+- velo (velocity of tracked particle)
+- dist (distance passed by tracked particle)
+- count (number of time particle was tracked)
+
+TracksReferenced_raw_PTV.jpg - corresponding image to TracksReferenced_raw_PTV.txt
+
+tracksFiltered_locally_PTV.txt - results after application of local filter
+- X (position X in object space)
+- Y (position Y in object space)
+- Z (position Z in object space)
+- velo (velocity of tracked particle)
+- dist (distance passed by tracked particle)
+- count (number of time particle was tracked)
+
+filteredTracks_locally_PTV.jpg - corresponding image to tracksFiltered_locally_PTV.txt
+
+TracksFiltered_PTV_VeloThresh.txt - results after application of statistical (threshold) velocity filter
+- X (position X in object space)
+- Y (position Y in object space)
+- Z (position Z in object space)
+- velo (velocity of tracked particle)
+- dist (distance passed by tracked particle)
+- count (number of time particle was tracked)
+
+TracksFiltered_PTV_VeloThresh.jpg - corresponding image to TracksFiltered_PTV_VeloThresh.txt
