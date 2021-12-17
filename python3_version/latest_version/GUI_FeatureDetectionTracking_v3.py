@@ -234,8 +234,8 @@ class FlowVeloTool:
         self.imgCoo_GCP_file_Button = Button(frame, text = '...', command = lambda:self.select_GCPimgCooFile())
         self.imgCoo_GCP_file_Button.place(x=self.xText, y=self.yAddText, width=20, height=20)
         self.imgCoo_GCP_file.set(currentDirectory + '/tutorial/markersGCPimg.txt')
-        self.imgCoo_GCP_file_Param.config(state='disabled')
-        self.imgCoo_GCP_file_Button.config(state='disabled')
+        #self.imgCoo_GCP_file_Param.config(state='disabled')
+        #self.imgCoo_GCP_file_Button.config(state='disabled')
 
         self.clickImg = tk.BooleanVar()
         self.clickImg.set(False)
