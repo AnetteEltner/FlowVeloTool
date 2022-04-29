@@ -3,7 +3,7 @@ FlowVelo: An image-based tool to automatically measure flow velocities
 This program tracks flow velocities using image or frame sequences. It includes measuring the camera position and orientation (camera pose), automatic extraction of the water area for feature searching, particle detection and filtering, particle tracking and filtering and scaling the tracks to get flow velocities. Furthermore, a function is included to automatically co-register frames in case of camera movements.
 
 Source code:
-https://github.com/AnetteEltner/FlowVeloTool/python3_version/latest_version
+https://github.com/AnetteEltner/FlowVeloTool/tree/master/python3_version/latest_version
 
 
 Requirements:
