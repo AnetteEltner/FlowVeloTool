@@ -68,8 +68,6 @@ while success:
     # will be co-registered (loop continues without processing anything until nbr of head
     # frame is reached)
     if countIth < everyIthFrame:
-        countIth = countIth + 1
-        continue
 
     #considers how many frames will be co-registered (i.e. how many frames will be
     #kept for processing -> result is stack of frames)
