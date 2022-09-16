@@ -35,6 +35,10 @@ class FlowVeloTool:
         eor_File = ".../example/ExteriorFromMetashape_Kappa(Yaw)Rotated180deg.csv"
         ptCloud_file = ".../example/waterMaskFromSfMPointCloud.txt"
         contour3D = ".../example/contour3D.txt"
+
+        lenFileAdd = 6  #to depict filename part, which infront of actual frame number
+        lenFileAddEnd = -23 #to depict filename part for pose retreival, which starts after frame number
+        lenFileAddEnd_tailing = -13  # to depict filename part of individual frames for tracking, which starts after frame number
         # <--- that are all new parameters, unless you need to change the parameters
 
 
@@ -47,11 +51,11 @@ class FlowVeloTool:
         lspiv = False
         lk = True
         initialLK = False
-        minimumThreshBrightness = 60
+        minimumThreshBrightness = 200
         neighborSearchRadius_FD = 30
-        maximumNeighbors_FD = 5
-        maxFtNbr_FD = 2000
-        sensitiveFD = 0.02
+        maximumNeighbors_FD = 20
+        maxFtNbr_FD = 6000
+        sensitiveFD = 0.001
         pointDistX = 200
         pointDistY = 200
 
@@ -63,28 +67,28 @@ class FlowVeloTool:
         search_area_x_CC = 30
         search_area_y_CC = 30
         shiftSearchFromCenter_x = 0
-        shiftSearchFromCenter_y = 2
-        subpixel = True
+        shiftSearchFromCenter_y = 8
+        subpixel = False
 
         performLSM = False
         savePlotData = True
-        save_gif = False
+        save_gif = True
 
         # parameters iterations
-        FD_everyIthFrame = 7
-        FT_forNthNberFrames = 9
-        TrackEveryNthFrame = 1
+        FD_everyIthFrame = 6
+        FT_forNthNberFrames = 7
+        TrackEveryNthFrame = 2
 
         # params filter tracks
         threshAngleSteadiness = 25
         threshAngleRange = 45
         binNbrMainflowdirection = 0
-        MainFlowAngleBuffer = 30
+        MainFlowAngleBuffer = 45
         veloStdThresh = 2
-        minDistance_px = 0.1
-        maxDistance_px = 3
+        minDistance_px = 2
+        maxDistance_px = 55
         minTrackedFeatures = 66 # values in percentage (%)
-        minTrackedFeatures = np.int(FT_forNthNberFrames * (minTrackedFeatures / 100) / TrackEveryNthFrame)
+        minTrackedFeatures = int(FT_forNthNberFrames * (minTrackedFeatures / 100) / TrackEveryNthFrame)
         veloFilterSize = 50
 
         gcpCoo_file = None
@@ -127,11 +131,9 @@ class FlowVeloTool:
         print('------------------------------------------')
 
         for index, frame in eor_Table.iterrows():
-            fileNameAdd = frame.id[0:lenFileAdd]
-
-            if fileNameAdd == veloFramesSkip:
-                continue
-
+            print(frame.id[lenFileAdd:lenFileAddEnd])
+            # if frame.id[0:lenFileAdd] == veloFramesSkip:
+            #     continue
             # if index < 41:
             #     continue
 
@@ -146,9 +148,9 @@ class FlowVeloTool:
                             # select only frames to corresponding oriented image
                             img_listUpdated = []
                             for imgfile in img_list:
-                                if fileNameAdd in imgfile:
+                                if frame.id[0:lenFileAdd] in imgfile[0:lenFileAdd]:
                                     img_listUpdated.append(imgfile)
-                            img_list = sorted(img_listUpdated, key=lambda x: np.int(x[lenFileAdd:lenFileAddEnd_tailing])) #sort based on frame number
+                            img_list = sorted(img_listUpdated, key=lambda x: int(x[lenFileAdd:lenFileAddEnd_tailing])) #sort based on frame number
 
                         except Exception as e:
                             print(e)
@@ -165,10 +167,10 @@ class FlowVeloTool:
 
                         '''-------get exterior camera geometry-------'''
                         # parameters exterior orientation estimation
-                        angles_eor = np.asarray([frame.pitch, frame.roll, frame.yaw], dtype=np.float)
+                        angles_eor = np.asarray([frame.pitch, frame.roll, frame.yaw], dtype=np.float64)
                         angles_eor = angles_eor.reshape(3, 1)
 
-                        pos_eor = np.asarray([frame.x, frame.y, frame.z], dtype=np.float)
+                        pos_eor = np.asarray([frame.x, frame.y, frame.z], dtype=np.float64)
                         pos_eor = pos_eor.reshape(3, 1)
 
                         eor_mat = ptv.EstimateExterior(gcpCoo_file, imgCoo_GCP_file, interior_orient, False,
@@ -185,6 +187,7 @@ class FlowVeloTool:
                         searchMask = ptv.searchMask(waterlevel_pt, waterlevel_buffer, AoI_file, ptCloud, unit_gcp,
                                                     interior_orient,
                                                     eor_mat, savePlotData, directoryOutput, img_list, False)
+
 
                         '''-------perform feature detection-------'''
                         frameCount = 0
