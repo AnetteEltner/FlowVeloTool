@@ -51,6 +51,7 @@ numberFramesToCoregister = 15
 # akaze threshold (see FlowVeloTool instruction)
 keypointReduce = 0.015
 
+VideoFile = 'dummy'
 ### <--- that is all
 
 
@@ -68,6 +69,8 @@ while success:
     # will be co-registered (loop continues without processing anything until nbr of head
     # frame is reached)
     if countIth < everyIthFrame:
+        countIth = countIth + 1
+        continue
 
     #considers how many frames will be co-registered (i.e. how many frames will be
     #kept for processing -> result is stack of frames)
@@ -83,7 +86,7 @@ while success:
     # select first frame as raw, original frame representative of stacked frames
     if not os.path.isdir(dirOut + '1st'):
         os.mkdir(dirOut + '1st')
-    cv2.imwrite(dirOut + '1st/' + str(image_count * everyIthFrame) + '_nbrCoReg_' + str(numberFramesToCoregister) + '.png',
+    cv2.imwrite(dirOut + '1st/' + VideoFile + str(image_count * everyIthFrame) + '_nbrCoReg_' + str(numberFramesToCoregister) + '.png',
                 imgList_coreg[1])
     print('finished saving 1st images')
 
@@ -93,8 +96,6 @@ while success:
     # process co-registered frames
     img_coreg_count = 0
     for img in imgsCoregistered:
-        if img_coreg_count == 0:
-            continue
 
         # processing for each band separately
         imgNew_Blue = img[:, :, 0]
@@ -119,7 +120,7 @@ while success:
         forVelosSubdir = dirOut + 'forVelos/' + str(image_count * everyIthFrame) + '_velocities/'
         if not os.path.isdir(forVelosSubdir):
             os.mkdir(forVelosSubdir)
-        cv2.imwrite(forVelosSubdir + str(image_count * everyIthFrame + img_coreg_count) +
+        cv2.imwrite(forVelosSubdir + VideoFile + str(image_count * everyIthFrame + img_coreg_count) +
                     '_oriFrame.png', img)
 
     print('finished stacking images')
@@ -132,7 +133,7 @@ while success:
 
     if not os.path.isdir(dirOut + 'median'):
         os.mkdir(dirOut + 'median')
-    cv2.imwrite(dirOut + 'median/' + str(image_count * everyIthFrame) + '_nbrCoReg_' + str(
+    cv2.imwrite(dirOut + 'median/' + VideoFile + str(image_count * everyIthFrame) + '_nbrCoReg_' + str(
                 numberFramesToCoregister) + '_median.png', imgMedian)
     print('finished median images')
 
@@ -145,7 +146,7 @@ while success:
     if not os.path.isdir(dirOut + 'min'):
         os.mkdir(dirOut + 'min')
     cv2.imwrite(
-        dirOut + 'min/' + str(image_count * everyIthFrame) + '_nbrCoReg_' + str(numberFramesToCoregister) + '_min.png',
+        dirOut + 'min/' + VideoFile + str(image_count * everyIthFrame) + '_nbrCoReg_' + str(numberFramesToCoregister) + '_min.png',
         imgMin)
     print('finished min images')
 
@@ -158,7 +159,7 @@ while success:
     if not os.path.isdir(dirOut + 'max'):
         os.mkdir(dirOut + 'max')
     cv2.imwrite(
-        dirOut + 'max/' + str(image_count * everyIthFrame) + '_nbrCoReg_' + str(numberFramesToCoregister) + '_max.png',
+        dirOut + 'max/' + VideoFile + str(image_count * everyIthFrame) + '_nbrCoReg_' + str(numberFramesToCoregister) + '_max.png',
         imgMax)
     print('finished max images')
 
@@ -170,7 +171,7 @@ while success:
 
     if not os.path.isdir(dirOut + 'mean'):
         os.mkdir(dirOut + 'mean')
-    cv2.imwrite(dirOut + 'mean/' + str(image_count * everyIthFrame) + '_nbrCoReg_' + str(
+    cv2.imwrite(dirOut + 'mean/' + VideoFile + str(image_count * everyIthFrame) + '_nbrCoReg_' + str(
         numberFramesToCoregister) + '_mean.png', imgMean)
     print('finished mean images')
 
