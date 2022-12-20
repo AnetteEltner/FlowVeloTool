@@ -120,6 +120,14 @@ def angleBetweenVecAndXaxis(track):
     len_vec_xy = np.sqrt(np.square(image_points_xy.y)+np.square(image_points_xy.x))
     angle = np.arccos(dotProd_vect/(len_vec_xy*len_vec_xy_tr))
     
+    for i, value in image_points_xy_tr.x_tr.iteritems():
+    if value < 0: #3. Quadrant
+        if image_points_xy_tr.y_tr[i] < 0:
+            angle[i] = angle[i] + math.pi
+    if value > 0: # 4. Quadrant
+        if image_points_xy_tr.y_tr[i] < 0:
+            angle[i] = angle[i] + math.pi
+    
     return angle
 
 
