@@ -122,7 +122,7 @@ def draw_tracks(Final_Vals, image, dir_out, outputImgName, variableToDraw, log_n
         image_points = image_points.reset_index(drop=True)        
         
         #set colors
-        jet = plt.get_cmap('Spectral')
+        jet = plt.get_cmap('Spectral_r')
         if log_norm:
             cNorm  = colors.LogNorm(vmin=image_points[variableToDraw].min(), vmax=image_points[variableToDraw].max())
         else:
