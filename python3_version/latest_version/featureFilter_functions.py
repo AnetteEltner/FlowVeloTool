@@ -31,6 +31,7 @@ import featureDetect_functions as detectF
 import scipy.spatial
 import draw_functions as drawF
 from sklearn.neighbors import NearestNeighbors
+import math
 
 
 def TrackFilterMinCount(image_points, minCount):
